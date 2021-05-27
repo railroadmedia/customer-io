@@ -3,7 +3,8 @@
 namespace Railroad\CustomerIo\Tests\Functional;
 
 use Carbon\Carbon;
-use Illuminate\Http\Request;
+use Railroad\CustomerIo\Events\CustomerCreated;
+use Railroad\CustomerIo\Models\Customer;
 use Railroad\CustomerIo\Services\CustomerIoService;
 use Railroad\CustomerIo\Tests\CustomerIoTestCase;
 
@@ -14,391 +15,194 @@ class CustomerIoServiceTest extends CustomerIoTestCase
      */
     private $customerIoService;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 
         $this->customerIoService = app()->make(CustomerIoService::class);
     }
 
-    public function test_track_lead_success()
+    public function test_get_customer_by_id()
     {
-        $brand = $this->faker->word;
-        config()->set('lead-tracker.brand', $brand);
+        $email = $this->faker->email;
+        $accountName = 'musora';
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
 
-        $data =
-            [
-                'email' => $this->faker->email,
-                'maropost_tag_name' => $this->faker->words(2, true),
-                'form_name' => $this->faker->words(2, true),
-                'form_page_url' => $this->faker->url,
-                'utm_source' => $this->faker->word . rand(),
-                'utm_medium' => $this->faker->word . rand(),
-                'utm_campaign' => $this->faker->word . rand(),
-                'utm_term' => $this->faker->words(2, true),
-            ];
+        $this->expectsEvents([CustomerCreated::class]);
 
-        $this->expectsEvents([LeadTracked::class]);
-
-        $inserted = $this->customerIoService->trackLead(
-            $data['email'],
-            $data['maropost_tag_name'],
-            $data['form_name'],
-            $data['form_page_url'],
-            $data['utm_source'],
-            $data['utm_medium'],
-            $data['utm_campaign'],
-            $data['utm_term']
+        $createdCustomer = $this->customerIoService->createCustomer(
+            $email,
+            $accountName
         );
 
-        $this->assertEquals(
-            array_merge(['id' => 1, 'submitted_at' => Carbon::now()->toDateTimeString(), 'brand' => $brand], $data),
-            $inserted
-        );
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(2);
 
-        $this->assertDatabaseHas('leadtracker_leads', $data);
+        $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, $createdCustomer->uuid);
+
+        $this->assertEquals($fetchedCustomer->uuid, $createdCustomer->uuid);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['id'], $createdCustomer->uuid);
+
+        $this->assertEquals($fetchedCustomer->email, $email);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['email'], $email);
+
+        $this->assertEquals($fetchedCustomer->workspace_name, $accountConfigData['workspace_name']);
+        $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
+        $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
+
+        $this->assertEquals($fetchedCustomer->created_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->updated_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->deleted_at, null);
     }
 
-    public function test_track_lead_success_with_null()
+    public function test_get_customer_by_id_not_found_in_database()
     {
-        $data =
-            [
-                'email' => $this->faker->email,
-                'maropost_tag_name' => $this->faker->words(2, true),
-                'form_name' => $this->faker->words(2, true),
-                'form_page_url' => $this->faker->url,
-                'utm_source' => null,
-                'utm_medium' => null,
-                'utm_campaign' => null,
-                'utm_term' => null,
-            ];
+        $email = $this->faker->email;
+        $accountName = 'musora';
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
 
-        $this->expectsEvents([LeadTracked::class]);
+        $this->expectExceptionMessage('No query results for model [Railroad\CustomerIo\Models\Customer]');
 
-        $inserted = $this->customerIoService->trackLead(
-            $data['email'],
-            $data['maropost_tag_name'],
-            $data['form_name'],
-            $data['form_page_url'],
-            $data['utm_source'],
-            $data['utm_medium'],
-            $data['utm_campaign'],
-            $data['utm_term']
-        );
-
-        $this->assertEquals(
-            array_merge(
-                [
-                    'id' => 1,
-                    'submitted_at' => Carbon::now()->toDateTimeString(),
-                    'brand' => null,
-                ],
-                $data
-            ),
-            $inserted
-        );
-
-        $this->assertDatabaseHas('leadtracker_leads', $data);
+        $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, rand().'_404');
     }
 
-    public function test_track_lead_no_duplicates()
+    public function test_get_customer_by_id_found_in_database_but_not_from_api()
     {
-        $brand = $this->faker->word;
-        config()->set('lead-tracker.brand', $brand);
+        $email = $this->faker->email;
+        $accountName = 'musora';
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
 
-        $data =
-            [
-                'email' => $this->faker->email,
-                'maropost_tag_name' => $this->faker->words(2, true),
-                'form_name' => $this->faker->words(2, true),
-                'form_page_url' => $this->faker->url,
-                'utm_source' => $this->faker->word . rand(),
-                'utm_medium' => $this->faker->word . rand(),
-                'utm_campaign' => $this->faker->word . rand(),
-                'utm_term' => $this->faker->words(2, true),
-            ];
+        $customer = new Customer();
+        $customer->generateUUID();
+        $customer->email = $this->faker->email;
+        $customer->workspace_name = $accountConfigData['workspace_name'];
+        $customer->workspace_id = $accountConfigData['workspace_id'];
+        $customer->site_id = $accountConfigData['site_id'];
 
-        $this->expectsEvents([LeadTracked::class]);
+        $customer->save();
 
-        $inserted = $this->customerIoService->trackLead(
-            $data['email'],
-            $data['maropost_tag_name'],
-            $data['form_name'],
-            $data['form_page_url'],
-            $data['utm_source'],
-            $data['utm_medium'],
-            $data['utm_campaign'],
-            $data['utm_term']
-        );
+        $this->expectExceptionCode(404);
 
-        $inserted = $this->customerIoService->trackLead(
-            $data['email'],
-            $data['maropost_tag_name'],
-            $data['form_name'],
-            $data['form_page_url'],
-            $data['utm_source'],
-            $data['utm_medium'],
-            $data['utm_campaign'],
-            $data['utm_term']
-        );
-
-        $this->assertEquals(
-            array_merge(['id' => 1, 'submitted_at' => Carbon::now()->toDateTimeString(), 'brand' => $brand], $data),
-            $inserted
-        );
-
-        $this->assertDatabaseHas('leadtracker_leads', $data);
-        $this->assertDatabaseMissing('leadtracker_leads', ['id' => 2]);
+        $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, $customer->uuid);
     }
 
-    public function test_get_input_array_for_request_tracking_form()
+    public function test_create_customer_without_attributes_or_existing_id_or_created_at()
     {
-        $formPath = '/test-path';
-        $formMethod = 'post';
-        $formName = 'my lead form';
-        $maropostTagName = 'my-tag';
+        $email = $this->faker->email;
+        $accountName = 'musora';
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
 
-        config()->set(
-            'lead-tracker.requests_to_capture',
-            [
-                [
-                    'path' => $formPath,
-                    'method' => $formMethod,
-                    'form_name' => 'other-form-name-not-to-track',
-                    'input_data_map' => [
-                        'email' => 'other_my_email_input_name',
-                        'maropost_tag_name' => 'other_my_maropost_tag_name_input_name',
-                        'form_name' => 'other_my_form_name_input_name',
-                        'utm_source' => 'other_my_utm_source_input_name',
-                        'utm_medium' => 'other_my_utm_medium_input_name',
-                        'utm_campaign' => 'other_my_utm_campaign_input_name',
-                        'utm_term' => 'other_my_utm_term_input_name',
-                    ],
-                ],
-                [
-                    'path' => $formPath,
-                    'method' => $formMethod,
-                    'form_name' => $formName,
-                    'input_data_map' => [
-                        'email' => 'my_email_input_name',
-                        'maropost_tag_name' => 'my_maropost_tag_name_input_name',
-                        'form_name' => 'my_form_name_input_name',
-                        'utm_source' => 'my_utm_source_input_name',
-                        'utm_medium' => 'my_utm_medium_input_name',
-                        'utm_campaign' => 'my_utm_campaign_input_name',
-                        'utm_term' => 'my_utm_term_input_name',
-                    ],
-                ],
-            ]
+        $this->expectsEvents([CustomerCreated::class]);
+
+        $createdCustomer = $this->customerIoService->createCustomer(
+            $email,
+            $accountName
         );
 
-        $data =
-            [
-                'utm_source' => $this->faker->word . rand(),
-                'utm_medium' => $this->faker->word . rand(),
-                'utm_campaign' => $this->faker->word . rand(),
-                'utm_term' => $this->faker->words(2, true),
-            ];
+        $data = [
+            'email' => $email,
+            'workspace_name' => $accountConfigData['workspace_name'],
+            'workspace_id' => $accountConfigData['workspace_id'],
+            'site_id' => $accountConfigData['site_id'],
+            'created_at' => Carbon::now()->toDateTimeString(),
+            'updated_at' => Carbon::now()->toDateTimeString(),
+            'deleted_at' => null,
+        ];
 
-        $request = Request::create('https://www.leadtracker.com/my-lead-page', 'get', $data);
+        $this->assertDatabaseHas('customer_io_customers', $data);
 
-        app()->bind(
-            'request',
-            function () use ($request) {
-                return $request;
-            }
-        );
+        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
 
-        $inputArray = CustomerIoService::getRequestTrackingInputArrayFromRequest(
-            $formPath,
-            $formMethod,
-            $maropostTagName,
-            $formName
-        );
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(2);
 
-        $this->assertEquals(
-            [
-                'my_maropost_tag_name_input_name' => 'my-tag',
-                'my_form_name_input_name' => 'my lead form',
-                'my_utm_source_input_name' => $data['utm_source'],
-                'my_utm_medium_input_name' => $data['utm_medium'],
-                'my_utm_campaign_input_name' => $data['utm_campaign'],
-                'my_utm_term_input_name' => $data['utm_term'],
-            ],
-            $inputArray
-        );
+        $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, $createdCustomer->uuid);
+
+        $this->assertEquals($fetchedCustomer->uuid, $createdCustomer->uuid);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['id'], $createdCustomer->uuid);
+
+        $this->assertEquals($fetchedCustomer->email, $email);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['email'], $email);
+
+        $this->assertEquals($fetchedCustomer->workspace_name, $accountConfigData['workspace_name']);
+        $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
+        $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
+
+        $this->assertEquals($fetchedCustomer->created_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->updated_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->deleted_at, null);
     }
 
-    public function test_get_input_array_for_request_tracking_form_with_nulls()
+    public function test_create_customer_with_attributes_and_created_at()
     {
-        $formPath = '/test-path';
-        $formMethod = 'post';
-        $formName = 'my lead form';
-        $maropostTagName = 'my-tag';
+        $email = $this->faker->email;
+        $accountName = 'musora';
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
+        $createdAt = Carbon::now()->subDays(1)->timestamp;
 
-        config()->set(
-            'lead-tracker.requests_to_capture',
-            [
-                [
-                    'path' => $formPath,
-                    'method' => $formMethod,
-                    'form_name' => $formName,
-                    'input_data_map' => [
-                        'email' => 'my_email_input_name',
-                        'maropost_tag_name' => 'my_maropost_tag_name_input_name',
-                        'form_name' => 'my_form_name_input_name',
-                        'utm_source' => 'my_utm_source_input_name',
-                        'utm_medium' => 'my_utm_medium_input_name',
-                        'utm_campaign' => 'my_utm_campaign_input_name',
-                        'utm_term' => 'my_utm_term_input_name',
-                    ],
-                ],
-            ]
+        $customAttributes = [
+            'my_string_1' => $this->faker->text(),
+            'my_bool_1' => true,
+            'my_bool_2' => false,
+            'my_integer_1' => 5,
+            'my_integer_2' => 5937653,
+            'my_timestamp_1' => Carbon::now()->subDays(100)->timestamp,
+            'my_timestamp_2' => Carbon::now()->addDays(100)->timestamp,
+        ];
+
+        $this->expectsEvents([CustomerCreated::class]);
+
+        $createdCustomer = $this->customerIoService->createCustomer(
+            $email,
+            $accountName,
+            $customAttributes,
+            null,
+            $createdAt
         );
 
-        $data = [];
+        $data = [
+            'uuid' => $createdCustomer->uuid,
+            'email' => $email,
+            'workspace_name' => $accountConfigData['workspace_name'],
+            'workspace_id' => $accountConfigData['workspace_id'],
+            'site_id' => $accountConfigData['site_id'],
+            'created_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
+            'updated_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
+            'deleted_at' => null,
+        ];
 
-        $request = Request::create('https://www.leadtracker.com/my-lead-page', 'get', $data);
+        $this->assertDatabaseHas('customer_io_customers', $data);
 
-        app()->bind(
-            'request',
-            function () use ($request) {
-                return $request;
-            }
-        );
+        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
 
-        $inputArray = CustomerIoService::getRequestTrackingInputArrayFromRequest(
-            $formPath,
-            $formMethod,
-            $maropostTagName,
-            $formName
-        );
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(2);
 
-        $this->assertEquals(
-            [
-                'my_maropost_tag_name_input_name' => 'my-tag',
-                'my_form_name_input_name' => 'my lead form',
-                'my_utm_source_input_name' => $data['utm_source'] ?? null,
-                'my_utm_medium_input_name' => $data['utm_medium'] ?? null,
-                'my_utm_campaign_input_name' => $data['utm_campaign'] ?? null,
-                'my_utm_term_input_name' => $data['utm_term'] ?? null,
-            ],
-            $inputArray
-        );
+        $data = array_merge($data, $customAttributes);
+
+        $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, $createdCustomer->uuid);
+
+        $this->assertEquals($fetchedCustomer->uuid, $createdCustomer->uuid);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['id'], $createdCustomer->uuid);
+
+        $this->assertEquals($fetchedCustomer->email, $email);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['email'], $email);
+
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['created_at'], $createdAt);
+
+        $this->assertEquals($fetchedCustomer->workspace_name, $accountConfigData['workspace_name']);
+        $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
+        $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
+
+        $this->assertEquals($fetchedCustomer->created_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->updated_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->deleted_at, null);
+
+        foreach ($customAttributes as $customAttributeName => $customAttributeValue) {
+            $this->assertEquals(
+                $data[$customAttributeName],
+                $fetchedCustomer->getExternalAttributes()[$customAttributeName]
+            );
+        }
     }
-
-    public function test_get_inputs_html_for_request_tracking_form()
-    {
-        $formPath = '/test-path';
-        $formMethod = 'post';
-        $formName = 'my lead form';
-        $maropostTagName = 'my-tag';
-
-        config()->set(
-            'lead-tracker.requests_to_capture',
-            [
-                [
-                    'path' => $formPath,
-                    'method' => $formMethod,
-                    'form_name' => $formName,
-                    'input_data_map' => [
-                        'email' => 'my_email_input_name',
-                        'maropost_tag_name' => 'my_maropost_tag_name_input_name',
-                        'form_name' => 'my_form_name_input_name',
-                        'utm_source' => 'my_utm_source_input_name',
-                        'utm_medium' => 'my_utm_medium_input_name',
-                        'utm_campaign' => 'my_utm_campaign_input_name',
-                        'utm_term' => 'my_utm_term_input_name',
-                    ],
-                ],
-            ]
-        );
-
-        $data =
-            [
-                'utm_source' => $this->faker->word . rand(),
-                'utm_medium' => $this->faker->word . rand(),
-                'utm_campaign' => $this->faker->word . rand(),
-                'utm_term' => $this->faker->words(2, true),
-            ];
-
-        $request = Request::create('https://www.leadtracker.com/my-lead-page', 'get', $data);
-
-        app()->bind(
-            'request',
-            function () use ($request) {
-                return $request;
-            }
-        );
-
-        $inputArray = CustomerIoService::getRequestTrackingInputsHtmlFromRequest(
-            $formPath,
-            $formMethod,
-            $maropostTagName,
-            $formName
-        );
-
-        $this->assertEquals(
-            "<input type='hidden' name='my_maropost_tag_name_input_name' value='my-tag'>\n" .
-            "<input type='hidden' name='my_form_name_input_name' value='my lead form'>\n" .
-            "<input type='hidden' name='my_utm_source_input_name' value='" . $data['utm_source'] . "'>\n" .
-            "<input type='hidden' name='my_utm_medium_input_name' value='" . $data['utm_medium'] . "'>\n" .
-            "<input type='hidden' name='my_utm_campaign_input_name' value='" . $data['utm_campaign'] . "'>\n" .
-            "<input type='hidden' name='my_utm_term_input_name' value='" . $data['utm_term'] . "'>\n",
-            $inputArray
-        );
-    }
-
-    public function test_get_inputs_html_for_request_tracking_form_with_nulls()
-    {
-        $formPath = '/test-path';
-        $formMethod = 'post';
-        $formName = 'my lead form';
-        $maropostTagName = 'my-tag';
-
-        config()->set(
-            'lead-tracker.requests_to_capture',
-            [
-                [
-                    'path' => $formPath,
-                    'method' => $formMethod,
-                    'form_name' => $formName,
-                    'input_data_map' => [
-                        'email' => 'my_email_input_name',
-                        'maropost_tag_name' => 'my_maropost_tag_name_input_name',
-                        'form_name' => 'my_form_name_input_name',
-                        'utm_source' => 'my_utm_source_input_name',
-                        'utm_medium' => 'my_utm_medium_input_name',
-                        'utm_campaign' => 'my_utm_campaign_input_name',
-                        'utm_term' => 'my_utm_term_input_name',
-                    ],
-                ],
-            ]
-        );
-
-        $data = [];
-
-        $request = Request::create('https://www.leadtracker.com/my-lead-page', 'get', $data);
-
-        app()->bind(
-            'request',
-            function () use ($request) {
-                return $request;
-            }
-        );
-
-        $inputArray = CustomerIoService::getRequestTrackingInputsHtmlFromRequest(
-            $formPath,
-            $formMethod,
-            $maropostTagName,
-            $formName
-        );
-
-        $this->assertEquals(
-            "<input type='hidden' name='my_maropost_tag_name_input_name' value='my-tag'>\n" .
-            "<input type='hidden' name='my_form_name_input_name' value='my lead form'>\n",
-            $inputArray
-        );
-    }
-
 }

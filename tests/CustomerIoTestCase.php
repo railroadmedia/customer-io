@@ -3,14 +3,13 @@
 namespace Railroad\CustomerIo\Tests;
 
 use Carbon\Carbon;
-use Exception;
+use Dotenv\Dotenv;
 use Faker\Generator;
 use Illuminate\Auth\AuthManager;
-use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Routing\Router;
 use Orchestra\Testbench\TestCase as BaseTestCase;
-use Railroad\LeadTracker\Providers\CustomerIoServiceProvider;
+use Railroad\CustomerIo\Providers\CustomerIoServiceProvider;
 
 
 class CustomerIoTestCase extends BaseTestCase
@@ -35,7 +34,7 @@ class CustomerIoTestCase extends BaseTestCase
      */
     protected $router;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -55,20 +54,24 @@ class CustomerIoTestCase extends BaseTestCase
     /**
      * Define environment setup. (This runs *before* "setUp" method above)
      *
-     * @param \Illuminate\Foundation\Application $app
+     * @param  \Illuminate\Foundation\Application  $app
      * @return void
      */
     protected function getEnvironmentSetUp($app)
     {
         // setup config for testing
-        $defaultConfig = require(__DIR__ . '/../config/customer-io.php');
+        $defaultConfig = require(__DIR__.'/../config/customer-io.php');
+
+        foreach ($defaultConfig as $defaultConfigKey => $defaultConfigValue) {
+            config()->set('customer-io.'.$defaultConfigKey, $defaultConfigValue);
+        }
 
         // db
-        config()->set('lead-tracker.data_mode', 'host');
-        config()->set('lead-tracker.database_connection_name', 'leadtracker_sqlite_tests');
-        config()->set('database.default', 'leadtracker_sqlite_tests');
+        config()->set('customer-io.data_mode', 'host');
+        config()->set('customer-io.database_connection_name', 'customer_io_sqlite_tests');
+        config()->set('database.default', 'customer_io_sqlite_tests');
         config()->set(
-            'database.connections.' . 'leadtracker_sqlite_tests',
+            'database.connections.'.'customer_io_sqlite_tests',
             [
                 'driver' => 'sqlite',
                 'database' => ':memory:',
@@ -76,64 +79,23 @@ class CustomerIoTestCase extends BaseTestCase
             ]
         );
 
-        if (empty(config('lead-tracker.charset'))) {
-            config()->set('lead-tracker.charset', 'utf8mb4');
-        }
-
-        if (empty(config('lead-tracker.collation'))) {
-            config()->set('lead-tracker.collation', 'utf8mb4_unicode_ci');
-        }
-
-
         // time
         Carbon::setTestNow(Carbon::now());
 
+        // .env
+        $dotenv = Dotenv::create(__DIR__.'/../', '.env.testing');
+        $dotenv->load();
+
+        if (!empty(env('SANDBOX_CUSTOMER_IO_SITE_ID')) &&
+            !empty(env('SANDBOX_CUSTOMER_IO_TRACK_API_KEY')) &&
+            !empty(env('SANDBOX_CUSTOMER_IO_TRACK_API_KEY'))) {
+
+            config()->set('customer-io.accounts.musora.site_id', env('SANDBOX_CUSTOMER_IO_SITE_ID'));
+            config()->set('customer-io.accounts.musora.track_api_key', env('SANDBOX_CUSTOMER_IO_TRACK_API_KEY'));
+            config()->set('customer-io.accounts.musora.app_api_key', env('SANDBOX_CUSTOMER_IO_APP_API_KEY'));
+        }
+
         // service provider
         $app->register(CustomerIoServiceProvider::class);
-    }
-
-    /**
-     * We don't want to use mockery so this is a reimplementation of the mockery version.
-     *
-     * @param array|string $events
-     * @return $this
-     */
-    public function expectsEvents($events)
-    {
-        $events = is_array($events) ? $events : func_get_args();
-
-        $mock =
-            $this->getMockBuilder(Dispatcher::class)
-                ->setMethods(['fire', 'dispatch'])
-                ->getMockForAbstractClass();
-
-        $mock->method('fire')
-            ->willReturnCallback(
-                function ($called) {
-                    $this->firedEvents[] = $called;
-                }
-            );
-
-        $mock->method('dispatch')
-            ->willReturnCallback(
-                function ($called) {
-                    $this->firedEvents[] = $called;
-                }
-            );
-
-        $this->app->instance('events', $mock);
-
-        $this->beforeApplicationDestroyed(
-            function () use ($events) {
-                $fired = $this->getFiredEvents($events);
-                if ($eventsNotFired = array_diff($events, $fired)) {
-                    throw new Exception(
-                        'These expected events were not fired: [' . implode(', ', $eventsNotFired) . ']'
-                    );
-                }
-            }
-        );
-
-        return $this;
     }
 }

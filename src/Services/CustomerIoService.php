@@ -4,11 +4,60 @@ namespace Railroad\CustomerIo\Services;
 
 use Carbon\Carbon;
 use Exception;
+use Railroad\CustomerIo\ApiGateways\CustomerIoApiGateway;
+use Railroad\CustomerIo\Events\CustomerCreated;
 use Railroad\CustomerIo\Models\Customer;
 use Throwable;
 
 class CustomerIoService
 {
+    /**
+     * @var CustomerIoApiGateway
+     */
+    private $customerIoApiGateway;
+
+    /**
+     * CustomerIoService constructor.
+     * @param  CustomerIoApiGateway  $customerIoApiGateway
+     */
+    public function __construct(CustomerIoApiGateway $customerIoApiGateway)
+    {
+        $this->customerIoApiGateway = $customerIoApiGateway;
+    }
+
+    /**
+     * @param string $accountName
+     * @param string $id
+     * @returns Customer
+     * @throws Exception
+     */
+    public function getCustomerById($accountName, $id)
+    {
+        // customer.io account/workspace details
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        /**
+         * @var $customer Customer
+         */
+        $customer = Customer::query()->where(
+            [
+                'uuid' => $id,
+                'workspace_name' => $accountConfigData['workspace_name'],
+                'workspace_id' => $accountConfigData['workspace_id'],
+                'site_id' => $accountConfigData['site_id'],
+            ]
+        )->firstOrFail();
+
+        $externalCustomerData = $this->customerIoApiGateway->getCustomer(
+            $accountConfigData['app_api_key'],
+            $customer->uuid
+        );
+
+        $customer->setExternalAttributes((array) $externalCustomerData->attributes);
+
+        return $customer;
+    }
+
     /**
      * If no ID is passed, one will be generated automatically.
      * If no $createdAtTimestamp is passed it will use the current time.
@@ -45,10 +94,12 @@ class CustomerIoService
         // email & other misc
         $customer->email = $email;
 
-        if (!empty($createdAtTimestamp)) {
-            $customer->setCreatedAt(Carbon::createFromTimestamp($createdAtTimestamp));
-            $customer->setUpdatedAt(Carbon::createFromTimestamp($createdAtTimestamp));
+        if (empty($createdAtTimestamp)) {
+            $createdAtTimestamp = Carbon::now()->timestamp;
         }
+
+        $customer->setCreatedAt(Carbon::createFromTimestamp($createdAtTimestamp));
+        $customer->setUpdatedAt(Carbon::createFromTimestamp($createdAtTimestamp));
 
         // save to the database
         $customer->saveOrFail();
@@ -57,27 +108,21 @@ class CustomerIoService
         // todo: sync via api, $customAttributes
         // delete from database if sync failed?
 
+        $this->customerIoApiGateway->addOrUpdateCustomer(
+            $accountConfigData['site_id'],
+            $accountConfigData['track_api_key'],
+            $customer->uuid,
+            $customer->email,
+            $customAttributes,
+            $createdAtTimestamp
+        );
+
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(2);
+
+        event(new CustomerCreated($customer));
+
         return $customer;
-    }
-
-    /**
-     * @param $accountName
-     * @return array
-     * @throws Exception
-     */
-    private function getAccountConfigData($accountName)
-    {
-        $accountConfig = config('customer-io.accounts')[$accountName] ?? [];
-
-        if (empty($accountConfig) ||
-            empty($accountConfig['workspace_name']) ||
-            empty($accountConfig['workspace_id']) ||
-            empty($accountConfig['site_id'])) {
-            // incorrect config, error
-            throw new Exception('Failed to create customer, no config exists for account name: '.$accountName);
-        }
-
-        return $accountConfig;
     }
 
     /**
@@ -242,5 +287,27 @@ class CustomerIoService
                 }
             }
         }
+    }
+
+    /**
+     * @param $accountName
+     * @return array
+     * @throws Exception
+     */
+    public function getAccountConfigData($accountName)
+    {
+        $accountConfig = config('customer-io.accounts')[$accountName] ?? [];
+
+        if (empty($accountConfig) ||
+            empty($accountConfig['workspace_name']) ||
+            empty($accountConfig['workspace_id']) ||
+            empty($accountConfig['site_id'])) {
+            // incorrect config, error
+            throw new Exception(
+                'Failed to connect to customer.io account, no config exists for account name: '.$accountName
+            );
+        }
+
+        return $accountConfig;
     }
 }

@@ -13,13 +13,13 @@ class CreateCustomerIdTable extends Migration
      */
     public function up()
     {
-        Schema::table(
+        Schema::create(
             'customer_io_customers',
             function (Blueprint $table) {
 
-                $table->increments('id');
+                $table->increments('internal_id');
 
-                $table->string('uuid', 64)->index();
+                $table->string('uuid', 64)->unique()->index();
                 $table->string('email')->index();
 
                 $table->string('workspace_name')->index();

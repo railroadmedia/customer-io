@@ -8,16 +8,18 @@ return [
     // customer.io accounts configuration
     'accounts' => [
         'musora' => [
-            'api_key' => '',
-            'workspace_name' => '',
-            'workspace_id' => '',
-            'site_id' => '',
+            'track_api_key' => 'musora_track_api_key_1',
+            'app_api_key' => 'musora_app_api_key_1',
+            'workspace_name' => 'musora_workspace_name_1',
+            'workspace_id' => 'musora_workspace_id_1',
+            'site_id' => 'musora_site_id_1',
         ],
         'singeo' => [
-            'api_key' => '',
-            'workspace_name' => '',
-            'workspace_id' => '',
-            'site_id' => '',
+            'track_api_key' => 'singeo_track_api_key_1',
+            'app_api_key' => 'singeo_app_api_key_1',
+            'workspace_name' => 'singeo_workspace_name_1',
+            'workspace_id' => 'singeo_workspace_id_1',
+            'site_id' => 'singeo_site_id_1',
         ],
     ],
 
