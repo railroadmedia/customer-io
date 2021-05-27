@@ -105,9 +105,6 @@ class CustomerIoService
         $customer->saveOrFail();
 
         // sync to customer.io using their API
-        // todo: sync via api, $customAttributes
-        // delete from database if sync failed?
-
         $this->customerIoApiGateway->addOrUpdateCustomer(
             $accountConfigData['site_id'],
             $accountConfigData['track_api_key'],
@@ -116,9 +113,6 @@ class CustomerIoService
             $customAttributes,
             $createdAtTimestamp
         );
-
-        // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(2);
 
         event(new CustomerCreated($customer));
 
@@ -169,8 +163,14 @@ class CustomerIoService
         $customer->saveOrFail();
 
         // sync to customer.io using their API
-        // todo: sync via api, $customAttributes
-        // delete from database if sync failed?
+        $this->customerIoApiGateway->addOrUpdateCustomer(
+            $accountConfigData['site_id'],
+            $accountConfigData['track_api_key'],
+            $customer->uuid,
+            $customer->email,
+            $customAttributes,
+            $createdAtTimestamp
+        );
 
         return $customer;
     }
@@ -256,12 +256,20 @@ class CustomerIoService
         return $customer;
     }
 
-    public function processForm($email, $formName)
+    /**
+     * @param $email
+     * @param $formNameToProcess
+     * @return Customer[]
+     * @throws Throwable
+     */
+    public function processForm($email, $formNameToProcess)
     {
         $allConfiguredForms = config('customer-io.forms', []);
 
+        $customers = [];
+
         foreach ($allConfiguredForms as $formName => $formConfig) {
-            if ($formName === $allConfiguredForms) {
+            if ($formName === $formNameToProcess) {
                 foreach ($formConfig['accounts_to_sync'] as $accountName) {
                     $accountConfigData = $this->getAccountConfigData($accountName);
 
@@ -282,11 +290,19 @@ class CustomerIoService
                     if (empty($customer)) {
                         $customer = $this->createCustomer($email, $accountName, $formConfig['custom_attributes']);
                     } else {
-                        $this->updateCustomer($customer->uuid, $accountName, $formConfig['custom_attributes']);
+                        $customer = $this->updateCustomer($customer->uuid, $accountName, $formConfig['custom_attributes']);
                     }
+
+                    $customers[] = $customer;
                 }
             }
         }
+
+        if (!empty($customers)) {
+            return $customers;
+        }
+
+        throw new Exception('Failed to process form: ' . $formNameToProcess . ' for email address: ' . $email);
     }
 
     /**

@@ -1,11 +1,12 @@
 <?php
 
-namespace Railroad\Maropost\Controllers;
+namespace Railroad\CustomerIo\Controllers;
 
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Railroad\CustomerIo\Services\CustomerIoService;
+use Throwable;
 
 class CustomerIoController extends Controller
 {
@@ -28,17 +29,40 @@ class CustomerIoController extends Controller
         $this->validate(
             $request,
             [
-                'email' => 'email',
-                'form_name' => 'in:'.implode(',', $allConfiguredFormNames),
+                'email' => 'required|email',
+                'form_name' => 'required|in:'.implode(',', $allConfiguredFormNames),
             ]
         );
 
-        $this->customerIoService->processForm($request->get('email'), $request->get('form_name'));
+        try {
+            $this->customerIoService->processForm($request->get('email'), $request->get('form_name'));
+        } catch (Throwable $exception) {
+            if (request()->expectsJson()) {
+                return response()->json(
+                    ['error' => $exception->getMessage()],
+                    500
+                );
+            } elseif ($request->has('error_redirect')) {
+                return redirect()
+                    ->away($request->input('error_redirect'))
+                    ->with(['error' => $exception->getMessage()]);
+            } else {
+                return redirect()
+                    ->back()
+                    ->with(['error' => $exception->getMessage()]);
+            }
+        }
 
         if (request()->expectsJson()) {
             return response('', 201); // Just a successfully created response
         }
 
-        return back()->with('successMessage', 'Your payment request registered successfully.');
+        if ($request->has('success_redirect')) {
+            $response = redirect()->away($request->input('success_redirect'));
+        } else {
+            $response = redirect()->back();
+        }
+
+        return $response->with(['success' => true]);
     }
 }

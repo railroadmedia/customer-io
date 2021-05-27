@@ -5,6 +5,9 @@ return [
     'database_connection_name' => 'mysql',
     'data_mode' => 'host', // 'host' or 'client', hosts do the db migrations, clients do not
 
+    // endpoint middleware
+    'all_routes_middleware' => [],
+
     // customer.io accounts configuration
     'accounts' => [
         'musora' => [
@@ -34,9 +37,9 @@ return [
                 'event_to_sync_1',
                 'event_to_sync_2',
             ],
+            // can sync to multiple accounts using this
             'accounts_to_sync' => [
                 'musora',
-                'singeo',
             ],
         ]
     ]

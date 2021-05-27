@@ -8,7 +8,7 @@ use Railroad\CustomerIo\Models\Customer;
 use Railroad\CustomerIo\Services\CustomerIoService;
 use Railroad\CustomerIo\Tests\CustomerIoTestCase;
 
-class CustomerIoServiceTest extends CustomerIoTestCase
+class CustomerIoControllerTest extends CustomerIoTestCase
 {
     /**
      * @var CustomerIoService
@@ -20,6 +20,26 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         parent::setUp();
 
         $this->customerIoService = app()->make(CustomerIoService::class);
+    }
+
+    public function test_submit_email_form_failed_validation()
+    {
+        $response = $this->post('customer-io/submit-email-form');
+
+        $this->assertEquals("The email field is required.", session()->get('errors')->get('email')[0]);
+        $this->assertEquals("The form name field is required.", session()->get('errors')->get('form_name')[0]);
+    }
+
+    public function test_submit_email_form_success_form_redirect()
+    {
+        $email = $this->faker->email;
+        $formName = 'Example Form Name';
+        $redirectUrl = $this->faker->url;
+
+        $response = $this->post('customer-io/submit-email-form', ['email' => $email, 'form_name' => $formName, 'success_redirect' => $redirectUrl]);
+
+        $this->assertEquals(302, $response->getStatusCode());
+        $response->assertRedirect($redirectUrl);
     }
 
     public function test_get_customer_by_id()
@@ -204,43 +224,5 @@ class CustomerIoServiceTest extends CustomerIoTestCase
                 $fetchedCustomer->getExternalAttributes()[$customAttributeName]
             );
         }
-    }
-
-    public function test_process_form()
-    {
-        $email = $this->faker->email;
-        $formName = 'Example Form Name';
-        $accountConfigData = $this->customerIoService->getAccountConfigData('musora');
-
-        $customers = $this->customerIoService->processForm($email, $formName);
-        $createdCustomer = $customers[0];
-
-        sleep(2);
-
-        $fetchedCustomer = $this->customerIoService->getCustomerById('musora', $createdCustomer->uuid);
-
-        $this->assertEquals($fetchedCustomer->uuid, $createdCustomer->uuid);
-        $this->assertEquals($fetchedCustomer->getExternalAttributes()['id'], $createdCustomer->uuid);
-
-        $this->assertEquals($fetchedCustomer->email, $email);
-        $this->assertEquals($fetchedCustomer->getExternalAttributes()['email'], $email);
-
-        $this->assertEquals($fetchedCustomer->workspace_name, $accountConfigData['workspace_name']);
-        $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
-        $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
-
-        $this->assertEquals($fetchedCustomer->created_at, Carbon::now()->toDateTimeString());
-        $this->assertEquals($fetchedCustomer->updated_at, Carbon::now()->toDateTimeString());
-        $this->assertEquals($fetchedCustomer->deleted_at, null);
-
-        $this->assertEquals(
-            'my attribute value 1',
-            $fetchedCustomer->getExternalAttributes()['attribute_to_sync_1']
-        );
-
-        $this->assertEquals(
-            'my attribute value 2',
-            $fetchedCustomer->getExternalAttributes()['attribute_to_sync_2']
-        );
     }
 }

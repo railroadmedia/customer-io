@@ -24,5 +24,7 @@ class CustomerIoServiceProvider extends ServiceProvider
         if (config('customer-io.data_mode') == 'host') {
             $this->loadMigrationsFrom(__DIR__.'/../../migrations');
         }
+
+        $this->loadRoutesFrom(__DIR__ . '/../../routes/customer-io.php');
     }
 }
