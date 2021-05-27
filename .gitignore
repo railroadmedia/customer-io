@@ -1,0 +1,7 @@
+.git
+composer.lock
+vendor
+.ide.env.testing.example
+.idea
+.env.testing
+.phpunit.*
