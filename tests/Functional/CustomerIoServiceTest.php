@@ -215,6 +215,21 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $customers = $this->customerIoService->processForm($email, $formName);
         $createdCustomer = $customers[0];
 
+        $data = [
+            'uuid' => $createdCustomer->uuid,
+            'email' => $email,
+            'workspace_name' => $accountConfigData['workspace_name'],
+            'workspace_id' => $accountConfigData['workspace_id'],
+            'site_id' => $accountConfigData['site_id'],
+            'created_at' => Carbon::now()->toDateTimeString(),
+            'updated_at' => Carbon::now()->toDateTimeString(),
+            'deleted_at' => null,
+        ];
+
+        $this->assertDatabaseHas('customer_io_customers', $data);
+
+        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
+
         sleep(2);
 
         $fetchedCustomer = $this->customerIoService->getCustomerById('musora', $createdCustomer->uuid);
