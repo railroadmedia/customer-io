@@ -3,6 +3,7 @@
 namespace Railroad\CustomerIo\Tests\Functional;
 
 use Carbon\Carbon;
+use Railroad\CustomerIo\ApiGateways\CustomerIoApiGateway;
 use Railroad\CustomerIo\Events\CustomerCreated;
 use Railroad\CustomerIo\Models\Customer;
 use Railroad\CustomerIo\Services\CustomerIoService;
@@ -15,11 +16,17 @@ class CustomerIoServiceTest extends CustomerIoTestCase
      */
     private $customerIoService;
 
+    /**
+     * @var CustomerIoApiGateway
+     */
+    private $customerIoApiGateway;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->customerIoService = app()->make(CustomerIoService::class);
+        $this->customerIoApiGateway = app()->make(CustomerIoApiGateway::class);
     }
 
     public function test_get_customer_by_id()
@@ -230,7 +237,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
 
         $this->assertNotEmpty(Customer::query()->find(1)->uuid);
 
-        sleep(2);
+        sleep(5);
 
         $fetchedCustomer = $this->customerIoService->getCustomerById('musora', $createdCustomer->uuid);
 
@@ -257,5 +264,51 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'my attribute value 2',
             $fetchedCustomer->getExternalAttributes()['attribute_to_sync_2']
         );
+
+        $fetchedCustomerActivities = $this->customerIoApiGateway->getCustomerActivities(
+            $accountConfigData['app_api_key'],
+            $createdCustomer->uuid,
+            'event'
+        );
+
+        $fetchedEventNames = [];
+
+        foreach ($fetchedCustomerActivities as $fetchedCustomerActivity) {
+            $fetchedEventNames[] = $fetchedCustomerActivity->name;
+        }
+
+        $this->assertContains('event_to_sync_1', $fetchedEventNames);
+        $this->assertContains('event_to_sync_2', $fetchedEventNames);
+    }
+
+    public function test_create_event_all_data()
+    {
+        $email = $this->faker->email;
+        $accountName = 'musora';
+        $eventName = 'my_event_1';
+        $eventType = 'my_event_type_1';
+        $createdAt = Carbon::now()->subDays(2)->timestamp;
+
+        $createdCustomer = $this->customerIoService->createCustomer(
+            $email,
+            $accountName
+        );
+
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(2);
+
+        $this->customerIoService->createEvent($createdCustomer->uuid, $accountName, $eventName, $eventType, $createdAt);
+
+        sleep(5);
+
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
+
+        $fetchedCustomerActivities = $this->customerIoApiGateway->getCustomerActivities(
+            $accountConfigData['app_api_key'],
+            $createdCustomer->uuid,
+            'event'
+        );
+
+        $this->assertEquals($eventName, $fetchedCustomerActivities[0]->name);
     }
 }

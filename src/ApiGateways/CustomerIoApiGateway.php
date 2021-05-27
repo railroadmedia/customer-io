@@ -61,23 +61,23 @@ class CustomerIoApiGateway
         $result = json_decode(curl_exec($ch), true);
 
         if (curl_errno($ch)) {
-            throw new Exception('Customer.io api call failed: '.curl_error($ch));
+            throw new Exception('Customer.io addOrUpdateCustomer api call failed: '.curl_error($ch));
         }
 
         // empty result means success for some reason...
         if ($result !== []) {
-            throw new Exception('Customer.io api call failed: '.curl_error($ch));
+            throw new Exception('Customer.io addOrUpdateCustomer api call failed: '.curl_error($ch));
         }
 
         curl_close($ch);
     }
 
     /**
-     * @param  string  $customerIoTrackApiKey
+     * @param  string  $customerIoAppApiKey
      * @param  string  $customerId
      */
     public function getCustomer(
-        $customerIoTrackApiKey,
+        $customerIoAppApiKey,
         $customerId
     ) {
         $ch = curl_init();
@@ -87,7 +87,7 @@ class CustomerIoApiGateway
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
 
         $headers = [];
-        $headers[] = 'Authorization: Bearer '.$customerIoTrackApiKey;
+        $headers[] = 'Authorization: Bearer '.$customerIoAppApiKey;
         $headers[] = 'Content-Type: application/json';
         $headers[] = 'Accept: application/json';
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -108,5 +108,138 @@ class CustomerIoApiGateway
         curl_close($ch);
 
         return $result->customer;
+    }
+
+    /**
+     * @param $customerIoSiteId
+     * @param  string  $customerIoTrackApiKey
+     * @param  string  $customerId
+     * @param  string  $eventName
+     * @param  null  $eventType
+     * @param  null  $createdAtTimestamp
+     * @return bool
+     * @throws Exception
+     */
+    public function createEvent(
+        $customerIoSiteId,
+        $customerIoTrackApiKey,
+        $customerId,
+        $eventName,
+        $eventType = null,
+        $createdAtTimestamp = null
+    ) {
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, 'https://track.customer.io/api/v1/customers/'.$customerId.'/events');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+
+        $dataArray = [
+            'name' => $eventName,
+        ];
+
+        if (!empty($eventType)) {
+            $dataArray['type'] = $eventType;
+        }
+
+        if (!empty($createdAtTimestamp)) {
+            $dataArray['timestamp'] = $createdAtTimestamp;
+        }
+
+        curl_setopt(
+            $ch,
+            CURLOPT_POSTFIELDS,
+            json_encode($dataArray)
+        );
+
+        $authHeaderKey = base64_encode($customerIoSiteId.':'.$customerIoTrackApiKey);
+
+        $headers = [];
+        $headers[] = 'Authorization: Basic '.$authHeaderKey;
+        $headers[] = 'Content-Type: application/json';
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        $result = json_decode(curl_exec($ch), true);
+
+        if (curl_errno($ch)) {
+            throw new Exception('Customer.io createEvent api call failed: '.curl_error($ch));
+        }
+
+        // empty result means success for some reason...
+        if ($result !== []) {
+            throw new Exception('Customer.io createEvent api call failed: '.curl_error($ch));
+        }
+
+        curl_close($ch);
+
+        return true;
+    }
+
+    /**
+     * https://customer.io/docs/api/#operation/getPersonActivities
+     *
+     * @param  string  $customerIoAppApiKey
+     * @param  string  $customerId
+     */
+    public function getCustomerActivities(
+        $customerIoAppApiKey,
+        $customerId,
+        $type = null,
+        $name = null,
+        $limit = 10,
+        $startToken = null
+    ) {
+        $ch = curl_init();
+
+        $params = [];
+
+        if (!empty($type)) {
+            $params['type'] = $type;
+        }
+        if (!empty($name)) {
+            $params['name'] = $name;
+        }
+        if (!empty($limit)) {
+            $params['limit'] = $limit;
+        }
+        if (!empty($startToken)) {
+            $params['start'] = $startToken;
+        }
+
+        $paramsString = http_build_query($params);
+
+        curl_setopt(
+            $ch,
+            CURLOPT_URL,
+            'https://beta-api.customer.io/v1/api/customers/'.$customerId.'/activities?'.$paramsString
+        );
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+
+        $headers = [];
+        $headers[] = 'Authorization: Bearer '.$customerIoAppApiKey;
+        $headers[] = 'Content-Type: application/json';
+        $headers[] = 'Accept: application/json';
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        $apiResponse = curl_exec($ch);
+
+        $result = json_decode($apiResponse);
+
+        if (curl_errno($ch)) {
+            throw new Exception('Customer.io getCustomerActivities api call failed: '.curl_error($ch));
+        }
+
+        // empty result means success for some reason...
+        if (!empty($result->errors)) {
+            throw new Exception(
+                'Customer.io getCustomerActivities api call failed: '.curl_error($ch).' - '.var_export($result, true),
+                404
+            );
+        }
+
+        curl_close($ch);
+
+        return $result->activities;
     }
 }

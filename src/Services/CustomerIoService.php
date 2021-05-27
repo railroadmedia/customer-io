@@ -26,8 +26,8 @@ class CustomerIoService
     }
 
     /**
-     * @param string $accountName
-     * @param string $id
+     * @param  string  $accountName
+     * @param  string  $id
      * @returns Customer
      * @throws Exception
      */
@@ -53,7 +53,7 @@ class CustomerIoService
             $customer->uuid
         );
 
-        $customer->setExternalAttributes((array) $externalCustomerData->attributes);
+        $customer->setExternalAttributes((array)$externalCustomerData->attributes);
 
         return $customer;
     }
@@ -290,7 +290,17 @@ class CustomerIoService
                     if (empty($customer)) {
                         $customer = $this->createCustomer($email, $accountName, $formConfig['custom_attributes']);
                     } else {
-                        $customer = $this->updateCustomer($customer->uuid, $accountName, $formConfig['custom_attributes']);
+                        $customer = $this->updateCustomer(
+                            $customer->uuid,
+                            $accountName,
+                            $formConfig['custom_attributes']
+                        );
+                    }
+
+                    sleep(1);
+
+                    foreach ($formConfig['events'] as $eventName) {
+                        $this->createEvent($customer->uuid, $accountName, $eventName);
                     }
 
                     $customers[] = $customer;
@@ -302,7 +312,37 @@ class CustomerIoService
             return $customers;
         }
 
-        throw new Exception('Failed to process form: ' . $formNameToProcess . ' for email address: ' . $email);
+        throw new Exception('Failed to process form: '.$formNameToProcess.' for email address: '.$email);
+    }
+
+    /**
+     * @param  string  $uuid
+     * @param  string  $accountName
+     * @param  string  $eventName
+     * @param  null  $eventType
+     * @param  null  $createdAtTimestamp
+     * @return bool
+     * @throws Exception
+     */
+    public function createEvent(
+        $uuid,
+        $accountName,
+        $eventName,
+        $eventType = null,
+        $createdAtTimestamp = null
+    ) {
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        $this->customerIoApiGateway->createEvent(
+            $accountConfigData['site_id'],
+            $accountConfigData['track_api_key'],
+            $uuid,
+            $eventName,
+            $eventType,
+            $createdAtTimestamp
+        );
+
+        return true;
     }
 
     /**
