@@ -13,25 +13,24 @@ class CreateCustomerIdTable extends Migration
      */
     public function up()
     {
-        Schema::create(
-            'customer_io_customers',
-            function (Blueprint $table) {
+        Schema::connection(config('customer-io.database_connection_name'))
+            ->create(
+                'customer_io_customers',
+                function (Blueprint $table) {
+                    $table->increments('internal_id');
 
-                $table->increments('internal_id');
+                    $table->string('uuid', 64)->unique()->index();
+                    $table->string('email')->index();
 
-                $table->string('uuid', 64)->unique()->index();
-                $table->string('email')->index();
+                    $table->string('workspace_name')->index();
+                    $table->string('workspace_id')->index();
+                    $table->string('site_id')->index();
 
-                $table->string('workspace_name')->index();
-                $table->string('workspace_id')->index();
-                $table->string('site_id')->index();
-
-                $table->timestamp('created_at')->index();
-                $table->timestamp('updated_at')->index();
-                $table->timestamp('deleted_at')->nullable()->index();
-
-            }
-        );
+                    $table->timestamp('created_at')->index();
+                    $table->timestamp('updated_at')->index();
+                    $table->timestamp('deleted_at')->nullable()->index();
+                }
+            );
     }
 
     /**
@@ -41,6 +40,6 @@ class CreateCustomerIdTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('leadtracker_leads');
+        Schema::connection(config('customer-io.database_connection_name'))->dropIfExists('leadtracker_leads');
     }
 }
