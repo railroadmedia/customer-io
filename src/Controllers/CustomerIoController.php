@@ -35,7 +35,7 @@ class CustomerIoController extends Controller
         );
 
         try {
-            $this->customerIoService->processForm($request->get('email'), $request->get('form_name'));
+            $customers = $this->customerIoService->processForm($request->get('email'), $request->get('form_name'));
         } catch (Throwable $exception) {
             if (request()->expectsJson()) {
                 return response()->json(
