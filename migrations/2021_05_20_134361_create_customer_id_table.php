@@ -40,6 +40,6 @@ class CreateCustomerIdTable extends Migration
      */
     public function down()
     {
-        Schema::connection(config('customer-io.database_connection_name'))->dropIfExists('leadtracker_leads');
+        Schema::connection(config('customer-io.database_connection_name'))->dropIfExists('customer_io_customers');
     }
 }
