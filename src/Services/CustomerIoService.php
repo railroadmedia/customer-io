@@ -17,12 +17,18 @@ class CustomerIoService
     private $customerIoApiGateway;
 
     /**
+     * @var string
+     */
+    private $userIdCustomFieldName;
+
+    /**
      * CustomerIoService constructor.
      * @param  CustomerIoApiGateway  $customerIoApiGateway
      */
     public function __construct(CustomerIoApiGateway $customerIoApiGateway)
     {
         $this->customerIoApiGateway = $customerIoApiGateway;
+        $this->userIdCustomFieldName = config('customer-io.customer_attribute_name_for_user_id', 'user_id');
     }
 
     /**
@@ -66,6 +72,7 @@ class CustomerIoService
      * @param $accountName
      * @param  array  $customAttributes
      * @param  string|null  $id
+     * @param  integer|null  $userId
      * @param  integer|null  $createdAtTimestamp
      * @throws Exception
      * @throws Throwable
@@ -75,6 +82,7 @@ class CustomerIoService
         $accountName,
         $customAttributes = [],
         $id = null,
+        $userId = null,
         $createdAtTimestamp = null
     ) {
         $customer = new Customer();
@@ -93,6 +101,7 @@ class CustomerIoService
 
         // email & other misc
         $customer->email = $email;
+        $customer->user_id = $userId;
 
         if (empty($createdAtTimestamp)) {
             $createdAtTimestamp = Carbon::now()->timestamp;
@@ -103,6 +112,11 @@ class CustomerIoService
 
         // save to the database
         $customer->saveOrFail();
+
+        // set the user id custom attribute if its not empty
+        if (!empty($userId)) {
+            $customAttributes[$this->userIdCustomFieldName] = $userId;
+        }
 
         // sync to customer.io using their API
         $this->customerIoApiGateway->addOrUpdateCustomer(
@@ -129,6 +143,7 @@ class CustomerIoService
      * @param $accountName
      * @param  array  $customAttributes
      * @param  null  $email
+     * @param  integer|null  $userId
      * @param  integer|null  $createdAtTimestamp
      * @return mixed
      * @throws Exception
@@ -138,10 +153,14 @@ class CustomerIoService
         $accountName,
         $customAttributes = [],
         $email = null,
+        $userId = null,
         $createdAtTimestamp = null
     ) {
         $accountConfigData = $this->getAccountConfigData($accountName);
 
+        /**
+         * @var $customer Customer
+         */
         $customer = Customer::query()->where(
             [
                 'uuid' => $uuid,
@@ -153,6 +172,10 @@ class CustomerIoService
 
         if (!empty($email)) {
             $customer->email = $email;
+        }
+
+        if (!empty($userId)) {
+            $customer->user_id = $userId;
         }
 
         if (!empty($createdAtTimestamp)) {
@@ -175,53 +198,59 @@ class CustomerIoService
         return $customer;
     }
 
-    /**
-     * Looks up the customer based on the $email and $accountName config data. Can update their email, custom fields,
-     * or created at time.
-     *
-     * @param $lookupEmail
-     * @param $accountName
-     * @param  array  $customAttributes
-     * @param  null  $newEmail
-     * @param  integer|null  $createdAtTimestamp
-     * @return mixed
-     * @throws Exception
-     */
-    public function createOrUpdateCustomerByEmail(
-        $lookupEmail,
-        $accountName,
-        $customAttributes = [],
-        $newEmail = null,
-        $createdAtTimestamp = null
-    ) {
-        $accountConfigData = $this->getAccountConfigData($accountName);
-
-        $customer = Customer::query()->where(
-            [
-                'email' => $lookupEmail,
-                'workspace_name' => $accountConfigData['workspace_name'],
-                'workspace_id' => $accountConfigData['workspace_id'],
-                'site_id' => $accountConfigData['site_id'],
-            ]
-        )->firstOrFail();
-
-        if (!empty($email)) {
-            $customer->email = $email;
-        }
-
-        if (!empty($createdAtTimestamp)) {
-            $customer->setCreatedAt(Carbon::createFromTimestamp($createdAtTimestamp));
-        }
-
-        // save to the database
-        $customer->saveOrFail();
-
-        // sync to customer.io using their API
-        // todo: sync via api, $customAttributes
-        // delete from database if sync failed?
-
-        return $customer;
-    }
+//    /**
+//     * Looks up the customer based on the $email and $accountName config data. Can update their email, custom fields,
+//     * or created at time.
+//     *
+//     * @param $lookupEmail
+//     * @param $accountName
+//     * @param  array  $customAttributes
+//     * @param  null  $newEmail
+//     * @param  integer|null  $newUserId
+//     * @param  integer|null  $createdAtTimestamp
+//     * @return mixed
+//     * @throws Exception
+//     */
+//    public function createOrUpdateCustomerByEmail(
+//        $lookupEmail,
+//        $accountName,
+//        $customAttributes = [],
+//        $newEmail = null,
+//        $newUserId = null,
+//        $createdAtTimestamp = null
+//    ) {
+//        $accountConfigData = $this->getAccountConfigData($accountName);
+//
+//        $customer = Customer::query()->where(
+//            [
+//                'email' => $lookupEmail,
+//                'workspace_name' => $accountConfigData['workspace_name'],
+//                'workspace_id' => $accountConfigData['workspace_id'],
+//                'site_id' => $accountConfigData['site_id'],
+//            ]
+//        )->firstOrFail();
+//
+//        if (!empty($newEmail)) {
+//            $customer->email = $newEmail;
+//        }
+//
+//        if (!empty($newUserId)) {
+//            $customer->newUserId = $newUserId;
+//        }
+//
+//        if (!empty($createdAtTimestamp)) {
+//            $customer->setCreatedAt(Carbon::createFromTimestamp($createdAtTimestamp));
+//        }
+//
+//        // save to the database
+//        $customer->saveOrFail();
+//
+//        // sync to customer.io using their API
+//        // todo: sync via api, $customAttributes
+//        // delete from database if sync failed?
+//
+//        return $customer;
+//    }
 
     /**
      * Deletes the customer based on the $uuid and $accountName config data.

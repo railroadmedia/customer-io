@@ -134,7 +134,7 @@ class CustomerIoControllerTest extends CustomerIoTestCase
         $this->assertNotEmpty(Customer::query()->find(1)->uuid);
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(2);
+        sleep(3);
 
         $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, $createdCustomer->uuid);
 
@@ -177,6 +177,84 @@ class CustomerIoControllerTest extends CustomerIoTestCase
             $accountName,
             $customAttributes,
             null,
+            null,
+            $createdAt
+        );
+
+        $data = [
+            'uuid' => $createdCustomer->uuid,
+            'email' => $email,
+            'workspace_name' => $accountConfigData['workspace_name'],
+            'workspace_id' => $accountConfigData['workspace_id'],
+            'site_id' => $accountConfigData['site_id'],
+            'created_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
+            'updated_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
+            'deleted_at' => null,
+        ];
+
+        $this->assertDatabaseHas('customer_io_customers', $data);
+
+        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
+
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(3);
+
+        $data = array_merge($data, $customAttributes);
+
+        $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, $createdCustomer->uuid);
+
+        $this->assertEquals($fetchedCustomer->uuid, $createdCustomer->uuid);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['id'], $createdCustomer->uuid);
+
+        $this->assertEquals($fetchedCustomer->email, $email);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['email'], $email);
+
+        $this->assertEquals($fetchedCustomer->user_id, null);
+
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['created_at'], $createdAt);
+
+        $this->assertEquals($fetchedCustomer->workspace_name, $accountConfigData['workspace_name']);
+        $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
+        $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
+
+        $this->assertEquals($fetchedCustomer->created_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->updated_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->deleted_at, null);
+
+        foreach ($customAttributes as $customAttributeName => $customAttributeValue) {
+            $this->assertEquals(
+                $data[$customAttributeName],
+                $fetchedCustomer->getExternalAttributes()[$customAttributeName]
+            );
+        }
+    }
+
+    public function test_create_customer_with_user_id_and_attributes_and_created_at()
+    {
+        $email = $this->faker->email;
+        $accountName = 'musora';
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
+        $userId = rand();
+        $createdAt = Carbon::now()->subDays(1)->timestamp;
+
+        $customAttributes = [
+            'my_string_1' => $this->faker->text(),
+            'my_bool_1' => true,
+            'my_bool_2' => false,
+            'my_integer_1' => 5,
+            'my_integer_2' => 5937653,
+            'my_timestamp_1' => Carbon::now()->subDays(100)->timestamp,
+            'my_timestamp_2' => Carbon::now()->addDays(100)->timestamp,
+        ];
+
+        $this->expectsEvents([CustomerCreated::class]);
+
+        $createdCustomer = $this->customerIoService->createCustomer(
+            $email,
+            $accountName,
+            $customAttributes,
+            null,
+            $userId,
             $createdAt
         );
 
@@ -207,6 +285,9 @@ class CustomerIoControllerTest extends CustomerIoTestCase
 
         $this->assertEquals($fetchedCustomer->email, $email);
         $this->assertEquals($fetchedCustomer->getExternalAttributes()['email'], $email);
+
+        $this->assertEquals($fetchedCustomer->user_id, $userId);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['user_id'], $userId);
 
         $this->assertEquals($fetchedCustomer->getExternalAttributes()['created_at'], $createdAt);
 

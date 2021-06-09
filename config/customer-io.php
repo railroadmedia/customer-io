@@ -8,6 +8,10 @@ return [
     // endpoint middleware
     'all_routes_middleware' => [],
 
+    // By default if a user id is passed to the service or controller functions it will be synced to all customers
+    // using this custom attribute name. Typically this should refer to your users ID in your own database.
+    'customer_attribute_name_for_user_id' => 'user_id',
+
     // customer.io accounts configuration
     'accounts' => [
         'musora' => [
