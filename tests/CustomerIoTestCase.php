@@ -49,6 +49,8 @@ class CustomerIoTestCase extends BaseTestCase
         $this->databaseManager = $this->app->make(DatabaseManager::class);
         $this->authManager = $this->app->make(AuthManager::class);
         $this->router = $this->app->make(Router::class);
+
+        Carbon::setTestNow(Carbon::now()->startOfSecond());
     }
 
     /**

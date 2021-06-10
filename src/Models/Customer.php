@@ -54,6 +54,10 @@ class Customer extends Model
      */
     public function getExternalAttributes()
     {
+        if ($this->externalAttributes === false) {
+            return $this->externalAttributes;
+        }
+
         foreach ($this->externalAttributes as $externalAttributeName => $externalAttributeValue) {
             if ($externalAttributeValue === 'true') {
                 $this->externalAttributes[$externalAttributeName] = true;

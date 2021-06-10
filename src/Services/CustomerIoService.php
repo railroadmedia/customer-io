@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Exception;
 use Railroad\CustomerIo\ApiGateways\CustomerIoApiGateway;
 use Railroad\CustomerIo\Events\CustomerCreated;
+use Railroad\CustomerIo\Events\CustomerUpdated;
 use Railroad\CustomerIo\Models\Customer;
 use Throwable;
 
@@ -170,6 +171,8 @@ class CustomerIoService
             ]
         )->firstOrFail();
 
+        $oldCustomer = clone $customer;
+
         if (!empty($email)) {
             $customer->email = $email;
         }
@@ -182,8 +185,15 @@ class CustomerIoService
             $customer->setCreatedAt(Carbon::createFromTimestamp($createdAtTimestamp));
         }
 
+        $customer->setUpdatedAt(Carbon::now());
+
         // save to the database
         $customer->saveOrFail();
+
+        // set the user id custom attribute if its not empty
+        if (!empty($userId)) {
+            $customAttributes[$this->userIdCustomFieldName] = $userId;
+        }
 
         // sync to customer.io using their API
         $this->customerIoApiGateway->addOrUpdateCustomer(
@@ -195,62 +205,53 @@ class CustomerIoService
             $createdAtTimestamp
         );
 
+        event(new CustomerUpdated($oldCustomer, $customer));
+
         return $customer;
     }
 
-//    /**
-//     * Looks up the customer based on the $email and $accountName config data. Can update their email, custom fields,
-//     * or created at time.
-//     *
-//     * @param $lookupEmail
-//     * @param $accountName
-//     * @param  array  $customAttributes
-//     * @param  null  $newEmail
-//     * @param  integer|null  $newUserId
-//     * @param  integer|null  $createdAtTimestamp
-//     * @return mixed
-//     * @throws Exception
-//     */
-//    public function createOrUpdateCustomerByEmail(
-//        $lookupEmail,
-//        $accountName,
-//        $customAttributes = [],
-//        $newEmail = null,
-//        $newUserId = null,
-//        $createdAtTimestamp = null
-//    ) {
-//        $accountConfigData = $this->getAccountConfigData($accountName);
-//
-//        $customer = Customer::query()->where(
-//            [
-//                'email' => $lookupEmail,
-//                'workspace_name' => $accountConfigData['workspace_name'],
-//                'workspace_id' => $accountConfigData['workspace_id'],
-//                'site_id' => $accountConfigData['site_id'],
-//            ]
-//        )->firstOrFail();
-//
-//        if (!empty($newEmail)) {
-//            $customer->email = $newEmail;
-//        }
-//
-//        if (!empty($newUserId)) {
-//            $customer->newUserId = $newUserId;
-//        }
-//
-//        if (!empty($createdAtTimestamp)) {
-//            $customer->setCreatedAt(Carbon::createFromTimestamp($createdAtTimestamp));
-//        }
-//
-//        // save to the database
-//        $customer->saveOrFail();
-//
-//        // sync to customer.io using their API
-//        // todo: sync via api, $customAttributes
-//        // delete from database if sync failed?
-//
-//        return $customer;
-//    }
+    /**
+     * Looks up the customer based on the $email and $accountName config data. If none exists, this creates a new one,
+     * otherwise it updates the existing customer in the database and via the API.
+     *
+     * @param $lookupEmail
+     * @param $accountName
+     * @param  array  $customAttributes
+     * @param  integer|null  $userId
+     * @param  integer|null  $createdAtTimestamp
+     * @return mixed
+     * @throws Exception
+     * @throws Throwable
+     */
+    public function createOrUpdateCustomerByEmail(
+        $lookupEmail,
+        $accountName,
+        $customAttributes = [],
+        $userId = null,
+        $createdAtTimestamp = null
+    ) {
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        /**
+         * @var $customer Customer
+         */
+        $customer = Customer::query()->where(
+            [
+                'email' => $lookupEmail,
+                'workspace_name' => $accountConfigData['workspace_name'],
+                'workspace_id' => $accountConfigData['workspace_id'],
+                'site_id' => $accountConfigData['site_id'],
+            ]
+        )->first();
+
+        if (empty($customer)) {
+            $customer = $this->createCustomer($lookupEmail, $accountName, $customAttributes, null, $userId, $createdAtTimestamp);
+        } else {
+            $customer = $this->updateCustomer($customer->uuid, $accountName, $customAttributes, null, $userId, $createdAtTimestamp);
+        }
+
+        return $customer;
+    }
 
     /**
      * Deletes the customer based on the $uuid and $accountName config data.
