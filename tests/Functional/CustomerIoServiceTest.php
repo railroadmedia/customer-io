@@ -63,6 +63,43 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals($fetchedCustomer->deleted_at, null);
     }
 
+    public function test_get_customer_by_user_id()
+    {
+        $email = $this->faker->email;
+        $userId = rand();
+        $accountName = 'musora';
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
+
+        $this->expectsEvents([CustomerCreated::class]);
+
+        $createdCustomer = $this->customerIoService->createCustomer(
+            $email,
+            $accountName,
+            [],
+            null,
+            $userId
+        );
+
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(2);
+
+        $fetchedCustomer = $this->customerIoService->getCustomerByUserId($accountName, $userId);
+
+        $this->assertEquals($fetchedCustomer->uuid, $createdCustomer->uuid);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['id'], $createdCustomer->uuid);
+
+        $this->assertEquals($fetchedCustomer->email, $email);
+        $this->assertEquals($fetchedCustomer->getExternalAttributes()['email'], $email);
+
+        $this->assertEquals($fetchedCustomer->workspace_name, $accountConfigData['workspace_name']);
+        $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
+        $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
+
+        $this->assertEquals($fetchedCustomer->created_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->updated_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals($fetchedCustomer->deleted_at, null);
+    }
+
     public function test_get_customer_by_id_not_found_in_database()
     {
         $email = $this->faker->email;

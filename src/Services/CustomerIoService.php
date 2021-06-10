@@ -66,6 +66,39 @@ class CustomerIoService
     }
 
     /**
+     * @param  string  $accountName
+     * @param  string  $userId
+     * @returns Customer
+     * @throws Exception
+     */
+    public function getCustomerByUserId($accountName, $userId)
+    {
+        // customer.io account/workspace details
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        /**
+         * @var $customer Customer
+         */
+        $customer = Customer::query()->where(
+            [
+                'user_id' => $userId,
+                'workspace_name' => $accountConfigData['workspace_name'],
+                'workspace_id' => $accountConfigData['workspace_id'],
+                'site_id' => $accountConfigData['site_id'],
+            ]
+        )->firstOrFail();
+
+        $externalCustomerData = $this->customerIoApiGateway->getCustomer(
+            $accountConfigData['app_api_key'],
+            $customer->uuid
+        );
+
+        $customer->setExternalAttributes((array)$externalCustomerData->attributes);
+
+        return $customer;
+    }
+
+    /**
      * If no ID is passed, one will be generated automatically.
      * If no $createdAtTimestamp is passed it will use the current time.
      *
