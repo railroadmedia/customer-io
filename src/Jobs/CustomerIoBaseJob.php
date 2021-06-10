@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 
-class CustomerIoBaseJobBaseJob implements ShouldQueue
+class CustomerIoBaseJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
