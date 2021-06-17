@@ -287,6 +287,51 @@ class CustomerIoService
     }
 
     /**
+     * Looks up the customer based on the user id and $accountName config data. If none exists, this creates a new one,
+     * otherwise it updates the existing customer in the database and via the API.
+     *
+     * If a new email is passed it will be updated in customer.io via the api
+     *
+     * @param  integer|null  $userId
+     * @param $accountName
+     * @param  string $userEmail
+     * @param  array  $customAttributes
+     * @param  integer|null  $createdAtTimestamp
+     * @return mixed
+     * @throws Exception
+     * @throws Throwable
+     */
+    public function createOrUpdateCustomerByUserId(
+        $userId,
+        $accountName,
+        $userEmail = null,
+        $customAttributes = [],
+        $createdAtTimestamp = null
+    ) {
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        /**
+         * @var $customer Customer
+         */
+        $customer = Customer::query()->where(
+            [
+                'user_id' => $userId,
+                'workspace_name' => $accountConfigData['workspace_name'],
+                'workspace_id' => $accountConfigData['workspace_id'],
+                'site_id' => $accountConfigData['site_id'],
+            ]
+        )->first();
+
+        if (empty($customer)) {
+            $customer = $this->createCustomer($userEmail, $accountName, $customAttributes, null, $userId, $createdAtTimestamp);
+        } else {
+            $customer = $this->updateCustomer($customer->uuid, $accountName, $customAttributes, $userEmail, $userId, $createdAtTimestamp);
+        }
+
+        return $customer;
+    }
+
+    /**
      * Deletes the customer based on the $uuid and $accountName config data.
      *
      * @param $uuid
