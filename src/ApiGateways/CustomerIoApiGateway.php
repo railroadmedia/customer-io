@@ -33,6 +33,7 @@ class CustomerIoApiGateway
 
         curl_setopt($ch, CURLOPT_URL, 'https://track.customer.io/api/v1/customers/'.$customerId);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
 
         $dataArray = $attributes;
@@ -84,6 +85,7 @@ class CustomerIoApiGateway
 
         curl_setopt($ch, CURLOPT_URL, 'https://beta-api.customer.io/v1/api/customers/'.$customerId.'/attributes');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
 
         $headers = [];
@@ -132,6 +134,7 @@ class CustomerIoApiGateway
 
         curl_setopt($ch, CURLOPT_URL, 'https://track.customer.io/api/v1/customers/'.$customerId.'/events');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 
         $dataArray = [
@@ -214,6 +217,7 @@ class CustomerIoApiGateway
             'https://beta-api.customer.io/v1/api/customers/'.$customerId.'/activities?'.$paramsString
         );
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
 
         $headers = [];
