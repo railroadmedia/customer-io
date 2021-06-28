@@ -246,4 +246,68 @@ class CustomerIoApiGateway
 
         return $result->activities;
     }
+
+    /**
+     * @param  string  $customerIoAppApiKey,
+     * @param  string  $customerIoTransactionalMessageId
+     * @param  string  $customerEmail
+     * @param  string  $customerId
+     * @param  array  $messageDataArray
+     * @return bool
+     * @throws Exception
+     */
+    public function sendTransactionalEmail(
+        $customerIoAppApiKey,
+        $customerIoTransactionalMessageId,
+        $customerEmail,
+        $customerId,
+        $messageDataArray = []
+    ) {
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, 'https://api.customer.io/v1/send/email');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+
+        $jonDataArray = [
+            'to' => $customerEmail,
+            'transactional_message_id' => $customerIoTransactionalMessageId,
+            'message_data' => $messageDataArray,
+            'identifiers' => [
+                'id' => $customerId,
+            ]
+        ];
+
+        curl_setopt(
+            $ch,
+            CURLOPT_POSTFIELDS,
+            json_encode($jonDataArray)
+        );
+
+        $headers = [];
+        $headers[] = 'Authorization: Bearer '.$customerIoAppApiKey;
+        $headers[] = 'Content-Type: application/json';
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        $rawResult = curl_exec($ch);
+        $jsonResult = json_decode($rawResult, true);
+
+        if (curl_errno($ch)) {
+            throw new Exception(
+                'Customer.io sendTransactionalEmail api call failed: '.curl_error($ch).' - Result: '.$rawResult
+            );
+        }
+
+        // empty result means success for some reason...
+        if (empty($jsonResult['delivery_id'])) {
+            throw new Exception(
+                'Customer.io sendTransactionalEmail api call failed: '.curl_error($ch).' - Result: '.$rawResult
+            );
+        }
+
+        curl_close($ch);
+
+        return true;
+    }
 }

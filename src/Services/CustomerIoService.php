@@ -454,6 +454,58 @@ class CustomerIoService
     }
 
     /**
+     * @param  string  $uuid
+     * @param  string  $accountName
+     * @param  string  $eventName
+     * @param $customerIoTransactionalMessageId
+     * @param $customerEmail
+     * @param $customerId
+     * @param  null  $eventType
+     * @param  null  $createdAtTimestamp
+     * @return bool
+     * @throws Exception
+     */
+    public function sendTransactionalEmail(
+        $accountName,
+        $customerIoTransactionalMessageId,
+        $customerEmail,
+        $messageDataArray = []
+    ) {
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        /**
+         * @var $customer Customer
+         */
+        $customer = Customer::query()
+            ->where(
+                [
+                    'email' => $customerEmail,
+                    'workspace_name' => $accountConfigData['workspace_name'],
+                    'workspace_id' => $accountConfigData['workspace_id'],
+                    'site_id' => $accountConfigData['site_id'],
+                ]
+            )
+            ->first();
+
+        if (empty($customer)) {
+            $customer = $this->createCustomer($customerEmail, $accountName);
+        }
+
+        // we must sleep because there is a delay until when the customer can be used in the API after its created
+        sleep(5);
+
+        $this->customerIoApiGateway->sendTransactionalEmail(
+            $accountConfigData['app_api_key'],
+            $customerIoTransactionalMessageId,
+            $customerEmail,
+            $customer->uuid,
+            $messageDataArray
+        );
+
+        return true;
+    }
+
+    /**
      * @param $accountName
      * @return array
      * @throws Exception
