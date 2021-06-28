@@ -162,15 +162,20 @@ class CustomerIoApiGateway
         $headers[] = 'Content-Type: application/json';
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
-        $result = json_decode(curl_exec($ch), true);
+        $rawResult = curl_exec($ch);
+        $jsonResult = json_decode($rawResult, true);
 
         if (curl_errno($ch)) {
-            throw new Exception('Customer.io createEvent api call failed: '.curl_error($ch));
+            throw new Exception(
+                'Customer.io createEvent api call failed: '.curl_error($ch).' - Result: '.$rawResult
+            );
         }
 
         // empty result means success for some reason...
-        if ($result !== []) {
-            throw new Exception('Customer.io createEvent api call failed: '.curl_error($ch));
+        if ($jsonResult !== []) {
+            throw new Exception(
+                'Customer.io createEvent api call failed: '.curl_error($ch).' - Result: '.$rawResult
+            );
         }
 
         curl_close($ch);

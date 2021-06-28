@@ -278,9 +278,23 @@ class CustomerIoService
         )->first();
 
         if (empty($customer)) {
-            $customer = $this->createCustomer($lookupEmail, $accountName, $customAttributes, null, $userId, $createdAtTimestamp);
+            $customer = $this->createCustomer(
+                $lookupEmail,
+                $accountName,
+                $customAttributes,
+                null,
+                $userId,
+                $createdAtTimestamp
+            );
         } else {
-            $customer = $this->updateCustomer($customer->uuid, $accountName, $customAttributes, null, $userId, $createdAtTimestamp);
+            $customer = $this->updateCustomer(
+                $customer->uuid,
+                $accountName,
+                $customAttributes,
+                null,
+                $userId,
+                $createdAtTimestamp
+            );
         }
 
         return $customer;
@@ -294,7 +308,7 @@ class CustomerIoService
      *
      * @param  integer|null  $userId
      * @param $accountName
-     * @param  string $userEmail
+     * @param  string  $userEmail
      * @param  array  $customAttributes
      * @param  integer|null  $createdAtTimestamp
      * @return mixed
@@ -323,9 +337,23 @@ class CustomerIoService
         )->first();
 
         if (empty($customer)) {
-            $customer = $this->createCustomer($userEmail, $accountName, $customAttributes, null, $userId, $createdAtTimestamp);
+            $customer = $this->createCustomer(
+                $userEmail,
+                $accountName,
+                $customAttributes,
+                null,
+                $userId,
+                $createdAtTimestamp
+            );
         } else {
-            $customer = $this->updateCustomer($customer->uuid, $accountName, $customAttributes, $userEmail, $userId, $createdAtTimestamp);
+            $customer = $this->updateCustomer(
+                $customer->uuid,
+                $accountName,
+                $customAttributes,
+                $userEmail,
+                $userId,
+                $createdAtTimestamp
+            );
         }
 
         return $customer;
@@ -454,6 +482,80 @@ class CustomerIoService
     }
 
     /**
+     * @param  string|null  $email
+     * @param  string|null  $uuid
+     * @param  string  $accountName
+     * @param  string  $eventName
+     * @param  null  $eventType
+     * @param  null  $createdAtTimestamp
+     * @return Customer
+     * @throws Exception
+     */
+    public function createEventForEmailOrId(
+        $email,
+        $uuid,
+        $accountName,
+        $eventName,
+        $eventType = null,
+        $createdAtTimestamp = null
+    ) {
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        if (!empty($uuid)) {
+            /**
+             * @var $customer Customer
+             */
+            $customer = Customer::query()
+                ->where(
+                    [
+                        'uuid' => $uuid,
+                        'workspace_name' => $accountConfigData['workspace_name'],
+                        'workspace_id' => $accountConfigData['workspace_id'],
+                        'site_id' => $accountConfigData['site_id'],
+                    ]
+                )
+                ->first();
+        } else {
+            /**
+             * @var $customer Customer
+             */
+            $customer = Customer::query()
+                ->where(
+                    [
+                        'email' => $email,
+                        'workspace_name' => $accountConfigData['workspace_name'],
+                        'workspace_id' => $accountConfigData['workspace_id'],
+                        'site_id' => $accountConfigData['site_id'],
+                    ]
+                )
+                ->first();
+
+            if (empty($customer)) {
+                $customer = $this->createCustomer($email, $accountName, []);
+
+                sleep(5);
+            }
+        }
+
+        if (!empty($customer)) {
+            $this->customerIoApiGateway->createEvent(
+                $accountConfigData['site_id'],
+                $accountConfigData['track_api_key'],
+                $customer->uuid,
+                $eventName,
+                $eventType,
+                $createdAtTimestamp
+            );
+
+            return $customer;
+        }
+
+        throw new Exception(
+            'Customer not found when trying to trigger event. Args: '.var_export(func_get_args(), true)
+        );
+    }
+
+    /**
      * @param  string  $uuid
      * @param  string  $accountName
      * @param  string  $eventName
@@ -489,10 +591,10 @@ class CustomerIoService
 
         if (empty($customer)) {
             $customer = $this->createCustomer($customerEmail, $accountName);
-        }
 
-        // we must sleep because there is a delay until when the customer can be used in the API after its created
-        sleep(5);
+            // we must sleep because there is a delay until when the customer can be used in the API after its created
+            sleep(5);
+        }
 
         $this->customerIoApiGateway->sendTransactionalEmail(
             $accountConfigData['app_api_key'],
