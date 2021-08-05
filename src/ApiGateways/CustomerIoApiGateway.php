@@ -117,6 +117,7 @@ class CustomerIoApiGateway
      * @param  string  $customerIoTrackApiKey
      * @param  string  $customerId
      * @param  string  $eventName
+     * @param  array  $eventData // key value pairs
      * @param  null  $eventType
      * @param  null  $createdAtTimestamp
      * @return bool
@@ -127,6 +128,7 @@ class CustomerIoApiGateway
         $customerIoTrackApiKey,
         $customerId,
         $eventName,
+        $eventData = [],
         $eventType = null,
         $createdAtTimestamp = null
     ) {
@@ -140,6 +142,10 @@ class CustomerIoApiGateway
         $dataArray = [
             'name' => $eventName,
         ];
+
+        if (!empty($eventData)) {
+            $dataArray['data'] = $eventData;
+        }
 
         if (!empty($eventType)) {
             $dataArray['type'] = $eventType;

@@ -99,6 +99,43 @@ class CustomerIoService
     }
 
     /**
+     * @param  string  $accountName
+     * @param  string  $userId
+     * @param  int  $limit
+     * @param  int  $amountToSkip
+     * @return Customer
+     * @throws Exception
+     */
+    public function getCustomerEventsByUserId($accountName, $userId, $limit = 25, $amountToSkip = 0)
+    {
+        // customer.io account/workspace details
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        /**
+         * @var $customer Customer
+         */
+        $customer = Customer::query()->where(
+            [
+                'user_id' => $userId,
+                'workspace_name' => $accountConfigData['workspace_name'],
+                'workspace_id' => $accountConfigData['workspace_id'],
+                'site_id' => $accountConfigData['site_id'],
+            ]
+        )->firstOrFail();
+
+        $customerActivities = $this->customerIoApiGateway->getCustomerActivities(
+            $accountConfigData['app_api_key'],
+            $customer->uuid,
+            'event',
+            null,
+            $limit,
+            $amountToSkip
+        );
+
+        return $customerActivities;
+    }
+
+    /**
      * If no ID is passed, one will be generated automatically.
      * If no $createdAtTimestamp is passed it will use the current time.
      *
@@ -552,6 +589,58 @@ class CustomerIoService
 
         throw new Exception(
             'Customer not found when trying to trigger event. Args: '.var_export(func_get_args(), true)
+        );
+    }
+
+
+    /**
+     * @param  integer $userId
+     * @param  string  $accountName
+     * @param  string  $eventName
+     * @param  array  $eventData
+     * @param  string|null  $eventType
+     * @param  integer|null  $createdAtTimestamp
+     * @return Customer
+     * @throws Exception
+     */
+    public function createEventForUserId(
+        $userId,
+        $accountName,
+        $eventName,
+        $eventData = [],
+        $eventType = null,
+        $createdAtTimestamp = null
+    ) {
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        /**
+         * @var $customer Customer
+         */
+        $customer = Customer::query()->where(
+            [
+                'user_id' => $userId,
+                'workspace_name' => $accountConfigData['workspace_name'],
+                'workspace_id' => $accountConfigData['workspace_id'],
+                'site_id' => $accountConfigData['site_id'],
+            ]
+        )->first();
+
+        if (!empty($customer)) {
+            $this->customerIoApiGateway->createEvent(
+                $accountConfigData['site_id'],
+                $accountConfigData['track_api_key'],
+                $customer->uuid,
+                $eventName,
+                $eventData,
+                $eventType,
+                $createdAtTimestamp
+            );
+
+            return $customer;
+        }
+
+        throw new Exception(
+            'Customer not found when trying to trigger event with user id. Args: '.var_export(func_get_args(), true)
         );
     }
 
