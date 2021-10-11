@@ -432,10 +432,11 @@ class CustomerIoService
     /**
      * @param $email
      * @param $formNameToProcess
-     * @return Customer[]
+     * @param $requestParams
+     * @return array
      * @throws Throwable
      */
-    public function processForm($email, $formNameToProcess)
+    public function processForm($email, $formNameToProcess, $requestParams)
     {
         $allConfiguredForms = config('customer-io.forms', []);
 
@@ -472,8 +473,13 @@ class CustomerIoService
 
                     sleep(1);
 
-                    foreach ($formConfig['events'] as $eventName) {
-                        $this->createEvent($customer->uuid, $accountName, $eventName);
+                   foreach ($formConfig['events'] as $eventName => $eventCustomData) {
+                        $eventData = [];
+                        foreach($eventCustomData ?? [] as $param => $dataKey){
+                            $eventData[$dataKey] = $requestParams[$param] ?? null;
+                        }
+
+                        $this->createEvent($customer->uuid, $accountName, $eventName, array_filter($eventData));
                     }
 
                     $customers[] = $customer;
@@ -489,11 +495,12 @@ class CustomerIoService
     }
 
     /**
-     * @param  string  $uuid
-     * @param  string  $accountName
-     * @param  string  $eventName
-     * @param  null  $eventType
-     * @param  null  $createdAtTimestamp
+     * @param $uuid
+     * @param $accountName
+     * @param $eventName
+     * @param array $eventData
+     * @param null $eventType
+     * @param null $createdAtTimestamp
      * @return bool
      * @throws Exception
      */
@@ -501,6 +508,7 @@ class CustomerIoService
         $uuid,
         $accountName,
         $eventName,
+        $eventData = [],
         $eventType = null,
         $createdAtTimestamp = null
     ) {
@@ -511,6 +519,7 @@ class CustomerIoService
             $accountConfigData['track_api_key'],
             $uuid,
             $eventName,
+            $eventData,
             $eventType,
             $createdAtTimestamp
         );
