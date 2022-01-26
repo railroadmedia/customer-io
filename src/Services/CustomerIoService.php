@@ -479,12 +479,10 @@ class CustomerIoService
 
                     sleep(1);
 
-                    foreach ($formConfig['events'] as $eventName => $eventCustomData) {
+                    foreach ($formConfig['events'] as $eventName) {
                         $eventData = [];
-                        if (is_array($eventCustomData)) {
-                            foreach ($eventCustomData ?? [] as $param => $dataKey) {
+                        foreach (config('customer-io.forms_events_UTM_parameters',[]) as $param => $dataKey) {
                                 $eventData[$dataKey] = $requestParams[$param] ?? null;
-                            }
                         }
 
                         $this->createEvent($customer->uuid, $accountName, $eventName, array_filter($eventData));
