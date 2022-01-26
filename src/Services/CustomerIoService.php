@@ -759,8 +759,6 @@ class CustomerIoService
             return $customer;
         }
 
-        throw new Exception(
-            'Customer not found when trying to add device for user id. Args: '.var_export(func_get_args(), true)
-        );
+        return;
     }
 }
