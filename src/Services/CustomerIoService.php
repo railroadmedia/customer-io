@@ -730,4 +730,48 @@ class CustomerIoService
 
         return $accountConfig;
     }
+
+    /**
+     * @param $userId
+     * @param $accountName
+     * @param $deviceData
+     * @param null $createdAtTimestamp
+     * @return Customer
+     * @throws Exception
+     */
+    public function syncDeviceForUserId(
+        $userId,
+        $accountName,
+        $deviceData,
+        $createdAtTimestamp = null
+    ) {
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        /**
+         * @var $customer Customer
+         */
+        $customer = Customer::query()->where(
+            [
+                'user_id' => $userId,
+                'workspace_name' => $accountConfigData['workspace_name'],
+                'workspace_id' => $accountConfigData['workspace_id'],
+                'site_id' => $accountConfigData['site_id'],
+            ]
+        )->first();
+
+        if (!empty($customer)) {
+
+            $this->customerIoApiGateway->addOrUpdateCustomerDevice(
+                $accountConfigData['site_id'],
+                $accountConfigData['track_api_key'],
+                $customer->uuid,
+                $deviceData,
+                $createdAtTimestamp
+            );
+
+            return $customer;
+        }
+
+        return;
+    }
 }

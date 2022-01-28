@@ -22,7 +22,8 @@ class CustomerIoServiceTest extends CustomerIoTestCase
      */
     private $customerIoApiGateway;
 
-    protected function setUp(): void
+    protected function setUp()
+    : void
     {
         parent::setUp();
 
@@ -58,8 +59,16 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
         $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
 
-        $this->assertEquals($fetchedCustomer->created_at, Carbon::now()->toDateTimeString());
-        $this->assertEquals($fetchedCustomer->updated_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals(
+            $fetchedCustomer->created_at,
+            Carbon::now()
+                ->toDateTimeString()
+        );
+        $this->assertEquals(
+            $fetchedCustomer->updated_at,
+            Carbon::now()
+                ->toDateTimeString()
+        );
         $this->assertEquals($fetchedCustomer->deleted_at, null);
     }
 
@@ -95,8 +104,16 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
         $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
 
-        $this->assertEquals($fetchedCustomer->created_at, Carbon::now()->toDateTimeString());
-        $this->assertEquals($fetchedCustomer->updated_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals(
+            $fetchedCustomer->created_at,
+            Carbon::now()
+                ->toDateTimeString()
+        );
+        $this->assertEquals(
+            $fetchedCustomer->updated_at,
+            Carbon::now()
+                ->toDateTimeString()
+        );
         $this->assertEquals($fetchedCustomer->deleted_at, null);
     }
 
@@ -108,7 +125,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
 
         $this->expectExceptionMessage('No query results for model [Railroad\CustomerIo\Models\Customer]');
 
-        $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, rand().'_404');
+        $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, rand() . '_404');
     }
 
     public function test_get_customer_by_id_found_in_database_but_not_from_api()
@@ -149,14 +166,19 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'workspace_name' => $accountConfigData['workspace_name'],
             'workspace_id' => $accountConfigData['workspace_id'],
             'site_id' => $accountConfigData['site_id'],
-            'created_at' => Carbon::now()->toDateTimeString(),
-            'updated_at' => Carbon::now()->toDateTimeString(),
+            'created_at' => Carbon::now()
+                ->toDateTimeString(),
+            'updated_at' => Carbon::now()
+                ->toDateTimeString(),
             'deleted_at' => null,
         ];
 
         $this->assertDatabaseHas('customer_io_customers', $data);
 
-        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
+        $this->assertNotEmpty(
+            Customer::query()
+                ->find(1)->uuid
+        );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
         sleep(2);
@@ -173,8 +195,16 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
         $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
 
-        $this->assertEquals($fetchedCustomer->created_at, Carbon::now()->toDateTimeString());
-        $this->assertEquals($fetchedCustomer->updated_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals(
+            $fetchedCustomer->created_at,
+            Carbon::now()
+                ->toDateTimeString()
+        );
+        $this->assertEquals(
+            $fetchedCustomer->updated_at,
+            Carbon::now()
+                ->toDateTimeString()
+        );
         $this->assertEquals($fetchedCustomer->deleted_at, null);
     }
 
@@ -183,7 +213,9 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $email = $this->faker->email;
         $accountName = 'musora';
         $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
-        $createdAt = Carbon::now()->subDays(1)->timestamp;
+        $createdAt =
+            Carbon::now()
+                ->subDays(1)->timestamp;
 
         $customAttributes = [
             'my_string_1' => $this->faker->text(),
@@ -191,8 +223,10 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'my_bool_2' => false,
             'my_integer_1' => 5,
             'my_integer_2' => 5937653,
-            'my_timestamp_1' => Carbon::now()->subDays(100)->timestamp,
-            'my_timestamp_2' => Carbon::now()->addDays(100)->timestamp,
+            'my_timestamp_1' => Carbon::now()
+                ->subDays(100)->timestamp,
+            'my_timestamp_2' => Carbon::now()
+                ->addDays(100)->timestamp,
         ];
 
         $this->expectsEvents([CustomerCreated::class]);
@@ -212,14 +246,19 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'workspace_name' => $accountConfigData['workspace_name'],
             'workspace_id' => $accountConfigData['workspace_id'],
             'site_id' => $accountConfigData['site_id'],
-            'created_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
-            'updated_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
+            'created_at' => Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString(),
+            'updated_at' => Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString(),
             'deleted_at' => null,
         ];
 
         $this->assertDatabaseHas('customer_io_customers', $data);
 
-        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
+        $this->assertNotEmpty(
+            Customer::query()
+                ->find(1)->uuid
+        );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
         sleep(3);
@@ -240,8 +279,16 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
         $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
 
-        $this->assertEquals($fetchedCustomer->created_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
-        $this->assertEquals($fetchedCustomer->updated_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
+        $this->assertEquals(
+            $fetchedCustomer->created_at,
+            Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString()
+        );
+        $this->assertEquals(
+            $fetchedCustomer->updated_at,
+            Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString()
+        );
         $this->assertEquals($fetchedCustomer->deleted_at, null);
 
         foreach ($customAttributes as $customAttributeName => $customAttributeValue) {
@@ -258,7 +305,9 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $accountName = 'musora';
         $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
         $userId = rand();
-        $createdAt = Carbon::now()->subDays(1)->timestamp;
+        $createdAt =
+            Carbon::now()
+                ->subDays(1)->timestamp;
 
         $customAttributes = [
             'my_string_1' => $this->faker->text(),
@@ -266,8 +315,10 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'my_bool_2' => false,
             'my_integer_1' => 5,
             'my_integer_2' => 5937653,
-            'my_timestamp_1' => Carbon::now()->subDays(100)->timestamp,
-            'my_timestamp_2' => Carbon::now()->addDays(100)->timestamp,
+            'my_timestamp_1' => Carbon::now()
+                ->subDays(100)->timestamp,
+            'my_timestamp_2' => Carbon::now()
+                ->addDays(100)->timestamp,
         ];
 
         $this->expectsEvents([CustomerCreated::class]);
@@ -287,14 +338,19 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'workspace_name' => $accountConfigData['workspace_name'],
             'workspace_id' => $accountConfigData['workspace_id'],
             'site_id' => $accountConfigData['site_id'],
-            'created_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
-            'updated_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
+            'created_at' => Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString(),
+            'updated_at' => Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString(),
             'deleted_at' => null,
         ];
 
         $this->assertDatabaseHas('customer_io_customers', $data);
 
-        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
+        $this->assertNotEmpty(
+            Customer::query()
+                ->find(1)->uuid
+        );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
         sleep(2);
@@ -318,8 +374,16 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
         $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
 
-        $this->assertEquals($fetchedCustomer->created_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
-        $this->assertEquals($fetchedCustomer->updated_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
+        $this->assertEquals(
+            $fetchedCustomer->created_at,
+            Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString()
+        );
+        $this->assertEquals(
+            $fetchedCustomer->updated_at,
+            Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString()
+        );
         $this->assertEquals($fetchedCustomer->deleted_at, null);
 
         foreach ($customAttributes as $customAttributeName => $customAttributeValue) {
@@ -336,7 +400,9 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $accountName = 'musora';
         $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
         $userId = rand();
-        $createdAt = Carbon::now()->subDays(1)->timestamp;
+        $createdAt =
+            Carbon::now()
+                ->subDays(1)->timestamp;
 
         $customAttributes = [
             'my_string_1' => $this->faker->text(),
@@ -344,8 +410,10 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'my_bool_2' => false,
             'my_integer_1' => 5,
             'my_integer_2' => 5937653,
-            'my_timestamp_1' => Carbon::now()->subDays(100)->timestamp,
-            'my_timestamp_2' => Carbon::now()->addDays(100)->timestamp,
+            'my_timestamp_1' => Carbon::now()
+                ->subDays(100)->timestamp,
+            'my_timestamp_2' => Carbon::now()
+                ->addDays(100)->timestamp,
         ];
 
         $this->expectsEvents([CustomerCreated::class]);
@@ -365,14 +433,19 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'workspace_name' => $accountConfigData['workspace_name'],
             'workspace_id' => $accountConfigData['workspace_id'],
             'site_id' => $accountConfigData['site_id'],
-            'created_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
-            'updated_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
+            'created_at' => Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString(),
+            'updated_at' => Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString(),
             'deleted_at' => null,
         ];
 
         $this->assertDatabaseHas('customer_io_customers', $data);
 
-        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
+        $this->assertNotEmpty(
+            Customer::query()
+                ->find(1)->uuid
+        );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
         sleep(2);
@@ -396,8 +469,16 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
         $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
 
-        $this->assertEquals($fetchedCustomer->created_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
-        $this->assertEquals($fetchedCustomer->updated_at, Carbon::createFromTimestamp($createdAt)->toDateTimeString());
+        $this->assertEquals(
+            $fetchedCustomer->created_at,
+            Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString()
+        );
+        $this->assertEquals(
+            $fetchedCustomer->updated_at,
+            Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString()
+        );
         $this->assertEquals($fetchedCustomer->deleted_at, null);
 
         foreach ($customAttributes as $customAttributeName => $customAttributeValue) {
@@ -414,7 +495,9 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $accountName = 'musora';
         $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
         $userId = rand();
-        $createdAt = Carbon::now()->subDays(1)->timestamp;
+        $createdAt =
+            Carbon::now()
+                ->subDays(1)->timestamp;
 
         $customAttributes = [
             'my_string_1' => $this->faker->text(),
@@ -422,8 +505,10 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'my_bool_2' => false,
             'my_integer_1' => 5,
             'my_integer_2' => 5937653,
-            'my_timestamp_1' => Carbon::now()->subDays(100)->timestamp,
-            'my_timestamp_2' => Carbon::now()->addDays(100)->timestamp,
+            'my_timestamp_1' => Carbon::now()
+                ->subDays(100)->timestamp,
+            'my_timestamp_2' => Carbon::now()
+                ->addDays(100)->timestamp,
         ];
 
         $this->expectsEvents([CustomerCreated::class]);
@@ -443,14 +528,19 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'workspace_name' => $accountConfigData['workspace_name'],
             'workspace_id' => $accountConfigData['workspace_id'],
             'site_id' => $accountConfigData['site_id'],
-            'created_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
-            'updated_at' => Carbon::createFromTimestamp($createdAt)->toDateTimeString(),
+            'created_at' => Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString(),
+            'updated_at' => Carbon::createFromTimestamp($createdAt)
+                ->toDateTimeString(),
             'deleted_at' => null,
         ];
 
         $this->assertDatabaseHas('customer_io_customers', $data);
 
-        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
+        $this->assertNotEmpty(
+            Customer::query()
+                ->find(1)->uuid
+        );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
         sleep(3);
@@ -462,11 +552,15 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'my_bool_2' => true,
             'my_integer_1' => 5982,
             'my_integer_2' => 583,
-            'my_timestamp_1' => Carbon::now()->subDays(3)->timestamp,
-            'my_timestamp_2' => Carbon::now()->addDays(3)->timestamp,
+            'my_timestamp_1' => Carbon::now()
+                ->subDays(3)->timestamp,
+            'my_timestamp_2' => Carbon::now()
+                ->addDays(3)->timestamp,
         ];
         $newUserId = rand();
-        $newCreatedAt = Carbon::now()->subDays(1)->timestamp;
+        $newCreatedAt =
+            Carbon::now()
+                ->subDays(1)->timestamp;
 
         $this->expectsEvents([CustomerUpdated::class]);
 
@@ -527,14 +621,19 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'workspace_name' => $accountConfigData['workspace_name'],
             'workspace_id' => $accountConfigData['workspace_id'],
             'site_id' => $accountConfigData['site_id'],
-            'created_at' => Carbon::now()->toDateTimeString(),
-            'updated_at' => Carbon::now()->toDateTimeString(),
+            'created_at' => Carbon::now()
+                ->toDateTimeString(),
+            'updated_at' => Carbon::now()
+                ->toDateTimeString(),
             'deleted_at' => null,
         ];
 
         $this->assertDatabaseHas('customer_io_customers', $data);
 
-        $this->assertNotEmpty(Customer::query()->find(1)->uuid);
+        $this->assertNotEmpty(
+            Customer::query()
+                ->find(1)->uuid
+        );
 
         sleep(5);
 
@@ -550,8 +649,16 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals($fetchedCustomer->workspace_id, $accountConfigData['workspace_id']);
         $this->assertEquals($fetchedCustomer->site_id, $accountConfigData['site_id']);
 
-        $this->assertEquals($fetchedCustomer->created_at, Carbon::now()->toDateTimeString());
-        $this->assertEquals($fetchedCustomer->updated_at, Carbon::now()->toDateTimeString());
+        $this->assertEquals(
+            $fetchedCustomer->created_at,
+            Carbon::now()
+                ->toDateTimeString()
+        );
+        $this->assertEquals(
+            $fetchedCustomer->updated_at,
+            Carbon::now()
+                ->toDateTimeString()
+        );
         $this->assertEquals($fetchedCustomer->deleted_at, null);
 
         $this->assertEquals(
@@ -586,7 +693,9 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $accountName = 'musora';
         $eventName = 'my_event_1';
         $eventType = 'my_event_type_1';
-        $createdAt = Carbon::now()->subDays(2)->timestamp;
+        $createdAt =
+            Carbon::now()
+                ->subDays(2)->timestamp;
 
         $createdCustomer = $this->customerIoService->createCustomer(
             $email,
@@ -609,5 +718,44 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         $this->assertEquals($eventName, $fetchedCustomerActivities[0]->name);
+    }
+
+    public function test_sync_user_device()
+    {
+        $email = $this->faker->email;
+        $accountName = 'musora';
+        $createdAt =
+            Carbon::now()
+                ->subDays(2)->timestamp;
+
+        $createdCustomer = $this->customerIoService->createCustomer(
+            $email,
+            $accountName
+        );
+
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(2);
+
+        $token = '749f535671cf6b34d8e794d212d00c703b96274e07161b18b082d0d70ef1052f';
+        $platform = 'ios';
+
+        $this->customerIoService->syncDeviceForUserId(
+            $createdCustomer->user_id,
+            $accountName, ['id' => $token, 'platform' => $platform],
+            $createdAt
+        );
+
+        sleep(5);
+
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
+
+        $fetchedCustomer = $this->customerIoApiGateway->getCustomer(
+            $accountConfigData['app_api_key'],
+            $createdCustomer->uuid
+        );
+
+        $this->assertEquals(1, count($fetchedCustomer->devices));
+        $this->assertEquals($token, $fetchedCustomer->devices[0]->id);
+        $this->assertEquals($platform, $fetchedCustomer->devices[0]->platform);
     }
 }
