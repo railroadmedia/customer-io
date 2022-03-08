@@ -361,7 +361,7 @@ class CustomerIoService
     public function createOrUpdateCustomerByUserId(
         $userId,
         $accountName,
-        $userEmail = null,
+        $userEmail,
         $customAttributes = [],
         $createdAtTimestamp = null
     ) {
@@ -381,11 +381,14 @@ class CustomerIoService
                 ->first();
 
         if (empty($customer)) {
-            $customer = $this->createCustomer(
+            // There may be a customer entry under the users email only with no user id so we should sync that one
+            // if none is found under the user id. This func will create/update as needed.
+            // This fixes a bug where sometimes createOrUpdateCustomerByUserId is called while the update by
+            // email job is still in the queue or has failed. -Caleb March 2022
+            $this->createOrUpdateCustomerByEmail(
                 $userEmail,
                 $accountName,
                 $customAttributes,
-                null,
                 $userId,
                 $createdAtTimestamp
             );
