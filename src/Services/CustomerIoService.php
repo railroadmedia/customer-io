@@ -15,7 +15,7 @@ class CustomerIoService
     /**
      * @var CustomerIoApiGateway
      */
-    private $customerIoApiGateway;
+    public $customerIoApiGateway;
 
     /**
      * @var string
@@ -776,5 +776,72 @@ class CustomerIoService
         }
 
         return;
+    }
+
+    /**
+     * @param $accountName
+     * @param $primaryCustomerId
+     * @param $secondaryCustomerId
+     * @return false|Customer
+     * @throws Exception
+     */
+    public function mergeCustomers(
+        $accountName,
+        $primaryCustomerId,
+        $secondaryCustomerId
+    ) {
+        $accountConfigData = $this->getAccountConfigData($accountName);
+
+        /**
+         * @var $customer Customer
+         */
+        $primaryCustomer = Customer::query()->where(
+            [
+                'uuid' => $primaryCustomerId,
+                'workspace_name' => $accountConfigData['workspace_name'],
+                'workspace_id' => $accountConfigData['workspace_id'],
+                'site_id' => $accountConfigData['site_id'],
+            ]
+        )->first();
+
+        /**
+         * @var $customer Customer
+         */
+        $secondaryCustomer = Customer::query()->where(
+            [
+                'uuid' => $secondaryCustomerId,
+                'workspace_name' => $accountConfigData['workspace_name'],
+                'workspace_id' => $accountConfigData['workspace_id'],
+                'site_id' => $accountConfigData['site_id'],
+            ]
+        )->first();
+
+        if (empty($primaryCustomer) || empty($secondaryCustomer)) {
+            throw new Exception(
+                'Could not merge customer ids because one is missing from the database. ' .
+                '$primaryCustomerId:' . $primaryCustomerId .
+                ' - $secondaryCustomerId:' . $secondaryCustomerId . ' - $accountName: ' . $accountName
+            );
+        }
+
+        try {
+            $this->customerIoApiGateway->mergeCustomers(
+                $accountConfigData['site_id'],
+                $accountConfigData['track_api_key'],
+                $primaryCustomerId,
+                $secondaryCustomerId
+            );
+        } catch (Exception $exception) {
+            error_log($exception);
+            error_log('Failed to merge customer.io customers. Secondary customer will not be deleted from database.' .
+                '$primaryCustomerId:' . $primaryCustomerId .
+                ' - $secondaryCustomerId:' . $secondaryCustomerId . ' - $accountName: ' . $accountName);
+
+            return false;
+        }
+
+        $secondaryCustomer->delete();
+
+        return $primaryCustomer;
     }
 }

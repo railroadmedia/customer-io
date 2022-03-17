@@ -3,6 +3,7 @@
 namespace Railroad\CustomerIo\Tests\Functional;
 
 use Carbon\Carbon;
+use Exception;
 use Railroad\CustomerIo\ApiGateways\CustomerIoApiGateway;
 use Railroad\CustomerIo\Events\CustomerCreated;
 use Railroad\CustomerIo\Events\CustomerUpdated;
@@ -45,7 +46,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(2);
+        sleep(4);
 
         $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, $createdCustomer->uuid);
 
@@ -90,7 +91,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(2);
+        sleep(4);
 
         $fetchedCustomer = $this->customerIoService->getCustomerByUserId($accountName, $userId);
 
@@ -181,7 +182,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(2);
+        sleep(4);
 
         $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, $createdCustomer->uuid);
 
@@ -261,7 +262,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(3);
+        sleep(4);
 
         $data = array_merge($data, $customAttributes);
 
@@ -353,7 +354,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(2);
+        sleep(4);
 
         $data = array_merge($data, $customAttributes);
 
@@ -448,7 +449,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(2);
+        sleep(4);
 
         $data = array_merge($data, $customAttributes);
 
@@ -543,7 +544,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(3);
+        sleep(4);
 
         // update
         $newCustomAttributes = [
@@ -575,7 +576,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $data = array_merge($data, $customAttributes);
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(3);
+        sleep(4);
 
         $fetchedCustomer = $this->customerIoService->getCustomerById($accountName, $updatedCustomer->uuid);
 
@@ -703,7 +704,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(2);
+        sleep(4);
 
         $this->customerIoService->createEvent($createdCustomer->uuid, $accountName, $eventName, $eventType, $createdAt);
 
@@ -734,7 +735,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         );
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
-        sleep(2);
+        sleep(4);
 
         $token = '749f535671cf6b34d8e794d212d00c703b96274e07161b18b082d0d70ef1052f';
         $platform = 'ios';
@@ -757,5 +758,115 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals(1, count($fetchedCustomer->devices));
         $this->assertEquals($token, $fetchedCustomer->devices[0]->id);
         $this->assertEquals($platform, $fetchedCustomer->devices[0]->platform);
+    }
+
+    public function test_merge_customers()
+    {
+        $accountName = 'musora';
+        $email = $this->faker->email;
+        $createdAt1 =
+            Carbon::now()
+                ->subDays(2)->timestamp;
+        $attributes1 = ['test1' => 'value-not-overwritten', 'test2' => 'new-value', 'test3' => ''];
+
+        $createdCustomer1 = $this->customerIoService->createCustomer(
+            $email,
+            $accountName,
+            $attributes1
+        );
+        $attributes2 = ['test2' => 'value-is-overwritten', 'test3' => 'this-is-set'];
+
+        $createdCustomer2 = $this->customerIoService->createCustomer(
+            $email,
+            $accountName,
+            $attributes2
+        );
+
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(4);
+
+        $primaryCustomer = $this->customerIoService->mergeCustomers(
+            $accountName,
+            $createdCustomer1->uuid,
+            $createdCustomer2->uuid
+        );
+
+        sleep(5);
+
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
+
+        $fetchedCustomer = $this->customerIoApiGateway->getCustomer(
+            $accountConfigData['app_api_key'],
+            $primaryCustomer->uuid
+        );
+
+        // duplicate should now be missing
+        try {
+            $fetchedDuplicateCustomer = $this->customerIoApiGateway->getCustomer(
+                $accountConfigData['app_api_key'],
+                $createdCustomer2->uuid
+            );
+        } catch (Exception $exception) {
+            $this->assertEquals(404, $exception->getCode());
+        }
+
+        $this->assertDatabaseMissing('customer_io_customers', ['uuid' => $createdCustomer2->uuid, 'deleted_at' => null]
+        );
+        $this->assertDatabaseHas(
+            'customer_io_customers',
+            ['uuid' => $createdCustomer2->uuid, 'deleted_at' => Carbon::now()->toDateTimeString()]
+        );
+        $this->assertDatabaseHas('customer_io_customers', ['uuid' => $primaryCustomer->uuid]);
+        $this->assertEquals($primaryCustomer->email, $fetchedCustomer->attributes->email);
+        $this->assertEquals($primaryCustomer->uuid, $fetchedCustomer->attributes->id);
+        $this->assertEquals("value-not-overwritten", $fetchedCustomer->attributes->test1);
+        $this->assertEquals("new-value", $fetchedCustomer->attributes->test2);
+        $this->assertEquals("this-is-set", $fetchedCustomer->attributes->test3);
+    }
+
+    public function test_merge_customers_failed_missing_from_db()
+    {
+        $accountName = 'musora';
+        $email = $this->faker->email;
+        $createdAt1 =
+            Carbon::now()
+                ->subDays(2)->timestamp;
+        $attributes1 = ['test1' => 'value-not-overwritten', 'test2' => 'new-value', 'test3' => ''];
+
+        $createdCustomer1 = $this->customerIoService->createCustomer(
+            $email,
+            $accountName,
+            $attributes1
+        );
+
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(4);
+
+        try {
+            $primaryCustomer = $this->customerIoService->mergeCustomers(
+                $accountName,
+                $createdCustomer1->uuid,
+                'test-fail-uuid'
+            );
+        } catch (Exception $exception) {
+            $this->assertEquals(
+                'Could not merge customer ids because one is missing from the database. $primaryCustomerId:' .
+                $createdCustomer1->uuid . ' - $secondaryCustomerId:test-fail-uuid - $accountName: musora',
+                $exception->getMessage()
+            );
+        }
+
+        sleep(5);
+
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
+
+        $fetchedCustomer = $this->customerIoApiGateway->getCustomer(
+            $accountConfigData['app_api_key'],
+            $createdCustomer1->uuid
+        );
+
+        $this->assertDatabaseHas('customer_io_customers', ['uuid' => $createdCustomer1->uuid]);
+        $this->assertEquals($createdCustomer1->email, $fetchedCustomer->attributes->email);
+        $this->assertEquals($createdCustomer1->uuid, $fetchedCustomer->attributes->id);
     }
 }

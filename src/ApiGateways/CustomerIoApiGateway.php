@@ -382,4 +382,63 @@ class CustomerIoApiGateway
 
         curl_close($ch);
     }
+
+    /**
+     * https://customer.io/docs/merge-people/
+     *
+     * @param $customerIoSiteId
+     * @param $customerIoTrackApiKey
+     * @param $primaryCustomerId
+     * @param $secondaryCustomerId
+     * @return bool
+     * @throws Exception
+     */
+    public function mergeCustomers(
+        $customerIoSiteId,
+        $customerIoTrackApiKey,
+        $primaryCustomerId,
+        $secondaryCustomerId
+    ) {
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, 'https://track.customer.io/api/v1/merge_customers');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+
+        $dataArray = [
+            'primary' => ['id' => $primaryCustomerId],
+            'secondary' => ['id' => $secondaryCustomerId],
+        ];
+
+        curl_setopt(
+            $ch,
+            CURLOPT_POSTFIELDS,
+            json_encode($dataArray)
+        );
+
+        $authHeaderKey = base64_encode($customerIoSiteId . ':' . $customerIoTrackApiKey);
+
+        $headers = [];
+        $headers[] = 'Authorization: Basic ' . $authHeaderKey;
+        $headers[] = 'Content-Type: application/json';
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        $result = json_decode(curl_exec($ch), true);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if (curl_errno($ch) || $httpCode !== 200) {
+            throw new Exception('Customer.io mergeCustomers api call failed: ' . curl_error($ch) .
+                ' - http code: ' . $httpCode);
+        }
+
+        // empty result means success for some reason...
+        if ($result !== []) {
+            throw new Exception('Customer.io mergeCustomers api call failed: ' . curl_error($ch));
+        }
+
+        curl_close($ch);
+
+        return true;
+    }
 }
