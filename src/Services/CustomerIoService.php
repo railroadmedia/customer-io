@@ -827,18 +827,27 @@ class CustomerIoService
         }
 
         try {
-            // if the secondary customer was created first, set the primary created at to match
-            if (Carbon::parse($secondaryCustomer->created_at) < Carbon::parse($primaryCustomer->created_at)) {
-                $primaryCustomer->created_at = $secondaryCustomer->created_at;
-                $primaryCustomer->save();
-            }
-
             $this->customerIoApiGateway->mergeCustomers(
                 $accountConfigData['site_id'],
                 $accountConfigData['track_api_key'],
                 $primaryCustomerId,
                 $secondaryCustomerId
             );
+
+            // if the secondary customer was created first, set the primary created at to match
+            if (Carbon::parse($secondaryCustomer->created_at) < Carbon::parse($primaryCustomer->created_at)) {
+                $primaryCustomer->created_at = $secondaryCustomer->created_at;
+                $primaryCustomer->save();
+
+                $this->customerIoApiGateway->addOrUpdateCustomer(
+                    $accountConfigData['site_id'],
+                    $accountConfigData['track_api_key'],
+                    $primaryCustomerId,
+                    null,
+                    [],
+                    Carbon::parse($secondaryCustomer->created_at)->timestamp
+                );
+            }
         } catch (Exception $exception) {
             error_log($exception);
             error_log('Failed to merge customer.io customers. Secondary customer will not be deleted from database.' .

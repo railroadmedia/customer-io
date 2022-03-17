@@ -885,6 +885,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             'created_at' => Carbon::now()
                 ->subDays(5)->toDateTimeString()
         ]);
+        $this->assertEquals(Carbon::now()->subDays(5)->timestamp, $fetchedCustomer->attributes->created_at);
         $this->assertEquals($primaryCustomer->email, $fetchedCustomer->attributes->email);
         $this->assertEquals($primaryCustomer->uuid, $fetchedCustomer->attributes->id);
         $this->assertEquals("value-not-overwritten", $fetchedCustomer->attributes->test1);
