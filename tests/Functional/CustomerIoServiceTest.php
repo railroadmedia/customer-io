@@ -819,6 +819,79 @@ class CustomerIoServiceTest extends CustomerIoTestCase
         $this->assertEquals("this-is-set", $fetchedCustomer->attributes->test3);
     }
 
+    public function test_merge_customers_updated_created_at()
+    {
+        $accountName = 'musora';
+        $email = $this->faker->email;
+        $createdAt1 =
+            Carbon::now()
+                ->subDays(1)->timestamp;
+        $attributes1 = ['test1' => 'value-not-overwritten', 'test2' => 'new-value', 'test3' => ''];
+
+        $createdCustomer1 = $this->customerIoService->createCustomer(
+            $email,
+            $accountName,
+            $attributes1,
+            null,
+            null,
+            $createdAt1
+        );
+
+        $attributes2 = ['test2' => 'value-is-overwritten', 'test3' => 'this-is-set'];
+        $createdAt2 =
+            Carbon::now()
+                ->subDays(5)->timestamp;
+        $createdCustomer2 = $this->customerIoService->createCustomer(
+            $email,
+            $accountName,
+            $attributes2,
+            null,
+            null,
+            $createdAt2
+        );
+
+        // for some reason the fetch API needs some time to update otherwise we always get 404
+        sleep(4);
+
+        $primaryCustomer = $this->customerIoService->mergeCustomers(
+            $accountName,
+            $createdCustomer1->uuid,
+            $createdCustomer2->uuid
+        );
+
+        sleep(5);
+
+        $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
+
+        $fetchedCustomer = $this->customerIoApiGateway->getCustomer(
+            $accountConfigData['app_api_key'],
+            $primaryCustomer->uuid
+        );
+
+        // duplicate should now be missing
+        try {
+            $fetchedDuplicateCustomer = $this->customerIoApiGateway->getCustomer(
+                $accountConfigData['app_api_key'],
+                $createdCustomer2->uuid
+            );
+        } catch (Exception $exception) {
+            $this->assertEquals(404, $exception->getCode());
+        }
+
+        $this->assertDatabaseMissing('customer_io_customers', ['uuid' => $createdCustomer2->uuid]);
+        $this->assertDatabaseHas('customer_io_customers', ['uuid' => $primaryCustomer->uuid]);
+        $this->assertDatabaseHas('customer_io_customers', [
+            'uuid' => $primaryCustomer->uuid,
+            'created_at' => Carbon::now()
+                ->subDays(5)->toDateTimeString()
+        ]);
+        $this->assertEquals($primaryCustomer->email, $fetchedCustomer->attributes->email);
+        $this->assertEquals($primaryCustomer->uuid, $fetchedCustomer->attributes->id);
+        $this->assertEquals("value-not-overwritten", $fetchedCustomer->attributes->test1);
+        $this->assertEquals("new-value", $fetchedCustomer->attributes->test2);
+        $this->assertEquals("this-is-set", $fetchedCustomer->attributes->test3);
+    }
+
     public function test_merge_customers_failed_missing_from_db()
     {
         $accountName = 'musora';

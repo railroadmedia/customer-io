@@ -827,6 +827,12 @@ class CustomerIoService
         }
 
         try {
+            // if the secondary customer was created first, set the primary created at to match
+            if (Carbon::parse($secondaryCustomer->created_at) < Carbon::parse($primaryCustomer->created_at)) {
+                $primaryCustomer->created_at = $secondaryCustomer->created_at;
+                $primaryCustomer->save();
+            }
+
             $this->customerIoApiGateway->mergeCustomers(
                 $accountConfigData['site_id'],
                 $accountConfigData['track_api_key'],
