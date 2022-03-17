@@ -810,12 +810,7 @@ class CustomerIoServiceTest extends CustomerIoTestCase
             $this->assertEquals(404, $exception->getCode());
         }
 
-        $this->assertDatabaseMissing('customer_io_customers', ['uuid' => $createdCustomer2->uuid, 'deleted_at' => null]
-        );
-        $this->assertDatabaseHas(
-            'customer_io_customers',
-            ['uuid' => $createdCustomer2->uuid, 'deleted_at' => Carbon::now()->toDateTimeString()]
-        );
+        $this->assertDatabaseMissing('customer_io_customers', ['uuid' => $createdCustomer2->uuid]);
         $this->assertDatabaseHas('customer_io_customers', ['uuid' => $primaryCustomer->uuid]);
         $this->assertEquals($primaryCustomer->email, $fetchedCustomer->attributes->email);
         $this->assertEquals($primaryCustomer->uuid, $fetchedCustomer->attributes->id);

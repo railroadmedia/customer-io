@@ -779,6 +779,8 @@ class CustomerIoService
     }
 
     /**
+     * Note, secondary customer row is always hard-deleted. It's not soft deleted.
+     *
      * @param $accountName
      * @param $primaryCustomerId
      * @param $secondaryCustomerId
@@ -840,7 +842,7 @@ class CustomerIoService
             return false;
         }
 
-        $secondaryCustomer->delete();
+        $secondaryCustomer->forceDelete();
 
         return $primaryCustomer;
     }
