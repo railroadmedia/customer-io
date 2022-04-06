@@ -36,10 +36,11 @@ class CustomerIoService
     /**
      * @param string $accountName
      * @param string $id
-     * @returns Customer
+     * @param bool $includeExternalAttributes
+     * @return Customer
      * @throws Exception
      */
-    public function getCustomerById($accountName, $id)
+    public function getCustomerById($accountName, $id, $includeExternalAttributes = true)
     {
         // customer.io account/workspace details
         $accountConfigData = $this->getAccountConfigData($accountName);
@@ -57,12 +58,14 @@ class CustomerIoService
                         ])
                 ->firstOrFail();
 
-        $externalCustomerData = $this->customerIoApiGateway->getCustomer(
-            $accountConfigData['app_api_key'],
-            $customer->uuid
-        );
+        if ($includeExternalAttributes) {
+            $externalCustomerData = $this->customerIoApiGateway->getCustomer(
+                $accountConfigData['app_api_key'],
+                $customer->uuid
+            );
 
-        $customer->setExternalAttributes((array)$externalCustomerData->attributes);
+            $customer->setExternalAttributes((array)$externalCustomerData->attributes);
+        }
 
         return $customer;
     }
@@ -70,10 +73,11 @@ class CustomerIoService
     /**
      * @param string $accountName
      * @param string $userId
-     * @returns Customer
+     * @param bool $includeExternalAttributes
+     * @return Customer
      * @throws Exception
      */
-    public function getCustomerByUserId($accountName, $userId)
+    public function getCustomerByUserId($accountName, $userId, $includeExternalAttributes = true)
     {
         // customer.io account/workspace details
         $accountConfigData = $this->getAccountConfigData($accountName);
@@ -91,12 +95,14 @@ class CustomerIoService
                         ])
                 ->firstOrFail();
 
-        $externalCustomerData = $this->customerIoApiGateway->getCustomer(
-            $accountConfigData['app_api_key'],
-            $customer->uuid
-        );
+        if ($includeExternalAttributes) {
+            $externalCustomerData = $this->customerIoApiGateway->getCustomer(
+                $accountConfigData['app_api_key'],
+                $customer->uuid
+            );
 
-        $customer->setExternalAttributes((array)$externalCustomerData->attributes);
+            $customer->setExternalAttributes((array)$externalCustomerData->attributes);
+        }
 
         return $customer;
     }
