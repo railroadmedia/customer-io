@@ -3,6 +3,7 @@
 namespace Railroad\CustomerIo\Tests\Functional;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Event;
 use Railroad\CustomerIo\Events\CustomerCreated;
 use Railroad\CustomerIo\Models\Customer;
 use Railroad\CustomerIo\Services\CustomerIoService;
@@ -48,12 +49,14 @@ class CustomerIoControllerTest extends CustomerIoTestCase
         $accountName = 'musora';
         $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
 
-        $this->expectsEvents([CustomerCreated::class]);
+        Event::fake([CustomerCreated::class]);
 
         $createdCustomer = $this->customerIoService->createCustomer(
             $email,
             $accountName
         );
+
+        Event::assertDispatched(CustomerCreated::class);
 
         // for some reason the fetch API needs some time to update otherwise we always get 404
         sleep(2);
@@ -112,12 +115,14 @@ class CustomerIoControllerTest extends CustomerIoTestCase
         $accountName = 'musora';
         $accountConfigData = $this->customerIoService->getAccountConfigData($accountName);
 
-        $this->expectsEvents([CustomerCreated::class]);
+        Event::fake([CustomerCreated::class]);
 
         $createdCustomer = $this->customerIoService->createCustomer(
             $email,
             $accountName
         );
+
+        Event::assertDispatched(CustomerCreated::class);
 
         $data = [
             'email' => $email,
@@ -170,7 +175,7 @@ class CustomerIoControllerTest extends CustomerIoTestCase
             'my_timestamp_2' => Carbon::now()->addDays(100)->timestamp,
         ];
 
-        $this->expectsEvents([CustomerCreated::class]);
+        Event::fake([CustomerCreated::class]);
 
         $createdCustomer = $this->customerIoService->createCustomer(
             $email,
@@ -180,6 +185,8 @@ class CustomerIoControllerTest extends CustomerIoTestCase
             null,
             $createdAt
         );
+
+        Event::assertDispatched(CustomerCreated::class);
 
         $data = [
             'uuid' => $createdCustomer->uuid,
@@ -247,7 +254,7 @@ class CustomerIoControllerTest extends CustomerIoTestCase
             'my_timestamp_2' => Carbon::now()->addDays(100)->timestamp,
         ];
 
-        $this->expectsEvents([CustomerCreated::class]);
+        Event::fake([CustomerCreated::class]);
 
         $createdCustomer = $this->customerIoService->createCustomer(
             $email,
@@ -257,6 +264,8 @@ class CustomerIoControllerTest extends CustomerIoTestCase
             $userId,
             $createdAt
         );
+
+        Event::assertDispatched(CustomerCreated::class);
 
         $data = [
             'uuid' => $createdCustomer->uuid,

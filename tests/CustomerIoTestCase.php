@@ -85,7 +85,7 @@ class CustomerIoTestCase extends BaseTestCase
         Carbon::setTestNow(Carbon::now());
 
         // .env
-        $dotenv = Dotenv::create(__DIR__.'/../', '.env.testing');
+        $dotenv = Dotenv::createImmutable(__DIR__ . '/../', '.env.testing');
         $dotenv->load();
 
         if (!empty(env('SANDBOX_CUSTOMER_IO_SITE_ID')) &&
